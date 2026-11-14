@@ -1,5 +1,8 @@
 """Offline English captions. Keys remain stable Chinese application values."""
 ENGLISH = {
+    '耗时 {0}': 'Elapsed {0}',
+    '服务器文件': 'Server files', '本地文件': 'Local files', '根目录': 'Root',
+    '双击进入文件夹 · 右键进行文件操作': 'Double-click folders to enter · Right-click for file actions',
     '恢复默认设置': 'Restore defaults', '清除': 'Clear', '请按下快捷键…': 'Press a shortcut…',
     '点击快捷键按钮后，直接按下所需组合键；Esc 取消录入，清除可禁用。\nControl = Ctrl；Return = 回车；comma = 逗号。文件操作仅在文件列表中生效。': 'Click a shortcut button, then press the desired keys. Esc cancels recording; Clear disables it.\nControl = Ctrl; Return = Enter; comma = comma. File shortcuts work in file lists only.',
     '未知语言': 'Unknown language', '当前快捷键（以设置为准）': 'Current shortcuts (from Settings)',

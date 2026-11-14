@@ -61,3 +61,7 @@ python -m compileall -q server_look tests tools
 启动源码仍使用 `start.cmd` 或 `python npu_client.pyw`。Linux 终端工具可使用整个项目的 `python npu_top.py`；单文件部署应复制 `server_look/remote/npu_top.py`。
 
 发布只包含源码、测试、文档和资源。不要提交 `.venv`、缓存、构建输出、日志、连接历史、口令或密钥。整理目录不改变版本及用户配置位置；保留用户指定的历史 EXE 和 Release。
+
+### 文件浏览布局与进度
+`ui/resource_views.py` 管理服务器侧列表及双栏容器；`files/local_files.py` 管理本地导航、元数据列和紧凑工具栏。两侧复用滚动列表创建和三态排序；不再重复显示服务器目录树。
+`Transfer(progress=callback)` 发出完成顶层项数和总项数；SFTP 回调另含当前文件的字节数。回调只写队列，`LocalFiles.poll` 在主线程更新界面与耗时。系统 SFTP 不提供字节百分比，不推测该值。`tests/test_file_browser.py` 覆盖元数据、根目录及项数进度。

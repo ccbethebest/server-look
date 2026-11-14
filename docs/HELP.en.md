@@ -42,3 +42,9 @@ To set a shortcut, click its button and press the actual key combination. Esc ca
 
 ## Installation and troubleshooting
 The packaged EXE includes its runtime and application code. No Python installation or Internet connection is required for local use; connecting to servers requires network access to those servers. Remote operations need suitable permissions and supported remote commands. If an operation fails, read the displayed reason and check SSH connectivity, authentication, permissions, free space and device tools.
+
+
+File browser (2.16)
+Server files appear on the left and local files on the right. Drag the divider to resize. Both lists show name, type, size and modification time. Click a heading to cycle ascending, descending and original order. Folder size is not calculated recursively.
+Double-click folders to enter. Use ↑ for parent, ⌂ for root and ↻ to refresh. Select a drive beside the local path, or enter a path and press Enter. Open window opens the selected folder or current directory in Windows Explorer.
+Upload, Download and Cancel share the local toolbar. Transfers target the opposite current directory; dropping on a folder targets that folder. The footer shows completed top-level items / total and elapsed time. SFTP callbacks also show the current file percentage; system SFTP shows item counts and an activity bar. Cancellation may leave incomplete files.

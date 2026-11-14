@@ -2,8 +2,11 @@
 from pathlib import Path
 import queue
 import threading
+import os
+import time
+from datetime import datetime
 from server_look.localization.localized_ui import ttk, StringVar, messagebox, simpledialog, Menu
-from server_look.ui.ui_icons import button as icon_button
+from server_look.ui.ui_icons import button as icon_button, Tooltip
 
 from server_look.files.file_transfer import Transfer, open_local_folder
 from server_look.ui.table_sort import enable_sort
@@ -15,37 +18,49 @@ class LocalFiles:
         self.page = resources.page
         self.events = queue.Queue()
         self.active = False
+        self.started = None
         self.transfer = None
         frame = ttk.Frame(pane, padding=(10, 0, 0))
-        pane.add(frame, weight=2)
-        ttk.Label(frame, text='本地文件 · 双击进入文件夹').pack(anchor='w')
+        pane.add(frame, weight=1)
+        ttk.Label(frame, text='本地文件', font=('', 11, 'bold')).pack(anchor='w')
         self.path = StringVar(value=str(Path.home()))
-        entry = ttk.Entry(frame, textvariable=self.path)
-        entry.pack(fill='x', pady=6)
+        path_bar = ttk.Frame(frame)
+        path_bar.pack(fill='x', pady=6)
+        self.drive = StringVar()
+        drives = [d for d in os.listdrives()] if hasattr(os, 'listdrives') else ['/']
+        self.drives = ttk.Combobox(path_bar, textvariable=self.drive, values=drives, width=5, state='readonly')
+        self.drives.pack(side='left', padx=(0, 4))
+        self.drives.bind('<<ComboboxSelected>>', lambda event: self.go_root(self.drive.get()))
+        entry = ttk.Entry(path_bar, textvariable=self.path)
+        entry.pack(side='left', fill='x', expand=True)
         entry.bind('<Return>', lambda event: self.browse())
         bar = ttk.Frame(frame)
-        bar.pack(fill='x')
-        for title, command in [('上级', self.up), ('刷新', self.browse), ('打开窗口', self.open)]:
-            icon_button(bar, text=title, command=command).pack(side='left', padx=2)
-        self.files = ttk.Treeview(frame, columns=('kind',), show='tree headings', selectmode='extended')
-        self.files.localized_columns = (0,)
-        self.files.heading('#0', text='本地名称')
-        self.files.heading('kind', text='类型')
-        self.files.column('kind', width=65, stretch=False)
-        enable_sort(self.files)
-        self.files.pack(fill='both', expand=True, pady=6)
-        scroll = ttk.Scrollbar(self.files, command=self.files.yview)
-        scroll.pack(side='right', fill='y')
-        self.files.configure(yscrollcommand=scroll.set)
-        self.files.bind('<Double-1>', self.enter)
-        actions = ttk.Frame(frame)
-        actions.pack(fill='x')
+        bar.pack(fill='x', pady=(0, 6))
+        for symbol, title, command in [('↑', '上级', self.up), ('⌂', '根目录', self.go_root),
+                                        ('↻', '刷新', self.browse)]:
+            button = ttk.Button(bar, text=symbol, width=2, style='Nav.TButton', command=command)
+            button.pack(side='left', padx=1)
+            button.tooltip = Tooltip(button, title)
+        icon_button(bar, text='打开窗口', style='Nav.TButton', command=self.open).pack(side='left', padx=2)
         for title, command in [('上传', lambda: self.start('upload')),
-                               ('下载', lambda: self.start('download')),
-                               ('取消传输', self.cancel)]:
-            icon_button(actions, text=title, command=command).pack(side='left', padx=2)
-        self.status = StringVar(value='Ctrl / Shift 多选；本地与服务器之间可直接拖拽传输')
-        ttk.Label(frame, textvariable=self.status, wraplength=460).pack(fill='x', pady=6)
+                               ('下载', lambda: self.start('download')), ('取消', self.cancel)]:
+            icon_button(bar, text=title, style='Danger.TButton' if title == '取消' else 'Accent.TButton',
+                        command=command).pack(side='left', padx=2)
+        self.files = resources.tree(frame, ('kind', 'size', 'modified'), 'tree headings')
+        self.files.localized_columns = (0,)
+        for key, title, width in [('#0', '名称', 220), ('kind', '类型', 70),
+                                  ('size', '大小', 90), ('modified', '修改时间', 150)]:
+            self.files.heading(key, text=title)
+            self.files.column(key, width=width, minwidth=70)
+        self.files.configure(selectmode='extended')
+        enable_sort(self.files)
+        self.files.bind('<Double-1>', self.enter)
+        footer = ttk.Frame(frame)
+        footer.pack(fill='x', pady=6)
+        self.elapsed = StringVar()
+        ttk.Label(footer, textvariable=self.elapsed).pack(side='right', padx=(6, 0))
+        self.status = StringVar(value='双击进入文件夹 · 右键进行文件操作')
+        ttk.Label(footer, textvariable=self.status).pack(side='left', fill='x', expand=True)
         self.progress = ttk.Progressbar(frame, mode='indeterminate')
         self.progress.pack(fill='x')
         self.items = {}
@@ -195,9 +210,19 @@ class LocalFiles:
             self.files.delete(*self.files.get_children())
             self.items.clear()
             for item in entries:
-                iid = self.files.insert('', 'end', text=item.name, values=('文件夹' if item.is_dir() else '文件',))
+                from server_look.ui.resource_views import size_text
+                try:
+                    metadata = item.stat()
+                    directory = item.is_dir()
+                    values = ('文件夹' if directory else '文件',
+                              '—' if directory else size_text(metadata.st_size),
+                              datetime.fromtimestamp(metadata.st_mtime).strftime('%Y-%m-%d %H:%M:%S'))
+                except OSError:
+                    values = ('文件', '—', '—')
+                iid = self.files.insert('', 'end', text=item.name, values=values)
                 self.items[iid] = item
             self.current = folder
+            self.drive.set(folder.anchor)
             self.path.set(str(folder))
         except OSError as exc:
             self.status.set(str(exc))
@@ -226,6 +251,10 @@ class LocalFiles:
 
     def up(self):
         self.path.set(str(Path(self.path.get()).parent))
+        self.browse()
+
+    def go_root(self, root=None):
+        self.path.set(str(root or Path(self.path.get()).anchor))
         self.browse()
 
     def mkdir_local(self):
@@ -297,6 +326,11 @@ class LocalFiles:
     def launch(self, work, title):
         self.active = True
         generation = self.page.generation
+        self.started = time.monotonic()
+        self.elapsed.set('耗时 00:00')
+        self.operation_title = title
+        if self.transfer:
+            self.transfer.progress = lambda update: self.events.put(('progress', generation, update))
         self.status.set(title + '进行中…')
         self.progress.start()
         def run():
@@ -310,14 +344,28 @@ class LocalFiles:
         threading.Thread(target=run, daemon=True).start()
 
     def poll(self):
+        if self.active and self.started is not None:
+            seconds = int(time.monotonic() - self.started)
+            self.elapsed.set(f'耗时 {seconds // 60:02d}:{seconds % 60:02d}')
         try:
             while True:
                 event = self.events.get_nowait()
+                if event[0] == 'progress':
+                    if event[1] == self.page.generation:
+                        update = event[2]
+                        detail = str(update['completed']) + '/' + str(update['total'])
+                        if update.get('bytes_total'):
+                            detail += f" · {update['bytes_done'] / update['bytes_total']:.0%}"
+                        self.status.set(self.operation_title + ' · ' + detail)
+                    continue
                 generation, error = event[:2]
                 detail = event[2] if len(event) > 2 else None
                 self.active = False
                 self.transfer = None
                 self.progress.stop()
+                if self.started is not None:
+                    seconds = int(time.monotonic() - self.started)
+                    self.elapsed.set(f'耗时 {seconds // 60:02d}:{seconds % 60:02d}')
                 if generation == self.page.generation:
                     self.status.set('操作失败：' + error if error else detail or '操作完成')
                     self.browse()

@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import threading
 import shutil
+import time
 
 
 def local_name(name):
@@ -30,7 +31,10 @@ def open_local_folder(path):
 
 
 class Transfer:
-    def __init__(self):
+    def __init__(self, progress=None):
+        self.progress = progress
+        self.batch = (0, 1)
+        self.last_progress = 0
         self.lock = threading.Lock()
         self.process = None
         self.cancelled = False
@@ -46,9 +50,14 @@ class Transfer:
             names = [local_name(posixpath.basename(source.rstrip('/'))) for source in sources]
             if len({name.casefold() for name in names}) != len(names):
                 raise ValueError('选中项含 Windows 下重名的文件')
-        for source in sources:
+        for index, source in enumerate(sources):
+            self.batch = (index, len(sources))
             self.check()
+            if self.progress:
+                self.progress({'completed': index, 'total': len(sources)})
             self.run_connection(connection, direction, source, destination)
+            if self.progress:
+                self.progress({'completed': index + 1, 'total': len(sources)})
 
     def copy_local(self, sources, destination):
         destination = Path(destination)
@@ -100,6 +109,12 @@ class Transfer:
             def check(*args):
                 if self.cancelled:
                     raise RuntimeError('传输已取消；目标可能保留部分文件')
+                if len(args) == 2 and self.progress:
+                    now = time.monotonic()
+                    if now - self.last_progress >= 0.1 or args[0] == args[1]:
+                        self.last_progress = now
+                        self.progress({'completed': self.batch[0], 'total': self.batch[1],
+                                       'bytes_done': args[0], 'bytes_total': args[1]})
 
             def copy(src, dst):
                 check()

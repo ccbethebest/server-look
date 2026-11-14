@@ -32,41 +32,39 @@ class ResourceViews:
         self.disks.tag_configure('critical', foreground='#ffbdc8', background='#442b3b')
         self.frame = ttk.Frame(page.tabs, padding=10)
         page.tabs.add(self.frame, text='文件浏览')
-        bar = ttk.Frame(self.frame)
-        bar.pack(fill='x', pady=(0, 10))
-        icon_button(bar, text='上级', command=self.up).pack(side='left')
-        self.path = tk.StringVar(value='/')
-        entry = ttk.Entry(bar, textvariable=self.path)
-        entry.pack(side='left', fill='x', expand=True, padx=8)
-        entry.bind('<Return>', lambda event: self.browse(self.path.get(), force=True))
-        icon_button(bar, text='前往 / 刷新', command=lambda: self.browse(self.path.get(), force=True)).pack(side='left')
         columns = ttk.Panedwindow(self.frame, orient='horizontal')
         columns.pack(fill='both', expand=True)
-        pane = ttk.Panedwindow(columns, orient='horizontal')
-        columns.add(pane, weight=3)
-        self.folders = self.tree(pane, (), 'tree')
-        self.folders.heading('#0', text='目录树 · 点击展开')
-        self.files = self.tree(pane, ('kind', 'size', 'modified'), 'tree headings')
+        remote = ttk.Frame(columns, padding=(0, 0, 6, 0))
+        columns.add(remote, weight=1)
+        ttk.Label(remote, text='服务器文件', font=('', 11, 'bold')).pack(anchor='w')
+        self.path = tk.StringVar(value='/')
+        entry = ttk.Entry(remote, textvariable=self.path)
+        entry.pack(fill='x', pady=6)
+        entry.bind('<Return>', lambda event: self.browse(self.path.get(), force=True))
+        bar = ttk.Frame(remote)
+        bar.pack(fill='x', pady=(0, 6))
+        for title, command in [('上级', self.up), ('根目录', lambda: self.browse('/')),
+                               ('前往 / 刷新', lambda: self.browse(self.path.get(), force=True))]:
+            icon_button(bar, text=title, style='Nav.TButton', command=command).pack(side='left', padx=2)
+        self.files = self.tree(remote, ('kind', 'size', 'modified'), 'tree headings')
         self.files.localized_columns = (0,)
         self.files.configure(selectmode='extended')
         self.files.heading('#0', text='名称')
-        for key, title, width in [('kind', '类型', 90), ('size', '大小', 110), ('modified', '修改时间', 175)]:
+        for key, title, width in [('kind', '类型', 70), ('size', '大小', 90), ('modified', '修改时间', 150)]:
             self.files.heading(key, text=title)
             self.files.column(key, width=width, minwidth=70)
-        self.files.column('#0', width=300)
+        self.files.column('#0', width=220, minwidth=100)
         enable_sort(self.files)
-        self.folders.bind('<<TreeviewOpen>>', self.expand)
-        self.folders.bind('<<TreeviewSelect>>', self.select_folder)
         self.files.bind('<Double-1>', self.enter)
         self.hint = tk.StringVar(value='只读浏览 · 连接后点击“前往”，支持隐藏文件、目录和符号链接')
-        ttk.Label(self.frame, textvariable=self.hint).pack(fill='x', pady=(8, 0))
+        ttk.Label(remote, textvariable=self.hint).pack(fill='x', pady=(6, 0))
         self.reset()
         self.local = LocalFiles(self, columns)
 
     @staticmethod
     def tree(pane, columns, show):
         frame = ttk.Frame(pane)
-        pane.add(frame, weight=1 if not columns else 3)
+        frame.pack(fill='both', expand=True)
         tree = ttk.Treeview(frame, columns=columns, show=show, selectmode='browse')
         vertical = ttk.Scrollbar(frame, command=tree.yview)
         horizontal = ttk.Scrollbar(frame, orient='horizontal', command=tree.xview)
@@ -83,19 +81,14 @@ class ResourceViews:
             self.local.cancel()
         self.path.set('/')
         self.current = None
-        self.target_node = None
         self.loading = False
         self.pending = None
         self.select_path = None
         self.cache = OrderedDict()
-        self.nodes = {}
         self.entries = {}
-        for tree in (self.folders, self.files, self.hardware, self.disks):
+        for tree in (self.files, self.hardware, self.disks):
             tree.delete(*tree.get_children())
-        node = self.folders.insert('', 'end', text='/ 服务器根目录', open=False, caption=True)
-        self.nodes['/'] = node
-        self.folders.insert(node, 'end', text='加载…', caption=True)
-        self.hint.set('只读浏览 · 连接后点击“前往”，或展开目录树')
+        self.hint.set('双击进入文件夹 · 右键进行文件操作')
 
     def render(self, data):
         self.hardware.delete(*self.hardware.get_children())
@@ -120,7 +113,6 @@ class ResourceViews:
             self.pending = (path, node, force, select)
             return
         self.select_path = select
-        self.target_node = node
         cached = self.cache.get(path)
         if not force and cached and time.monotonic() - cached[0] < 15:
             self.cache.move_to_end(path)
@@ -150,27 +142,9 @@ class ResourceViews:
         path = result['path']
         self.current = path
         self.path.set(path)
-        node = self.target_node or self.nodes.get(path)
-        if node is None:
-            node = self.folders.insert('', 'end', text=path)
-        self.nodes[path] = node
-        # Remove stale descendants from the path index before rebuilding this branch.
-        descendants = set()
-        def remember(parent):
-            for child in self.folders.get_children(parent):
-                descendants.add(child)
-                remember(child)
-        remember(node)
-        self.nodes = {key: value for key, value in self.nodes.items() if value not in descendants}
-        self.folders.delete(*self.folders.get_children(node))
-        self.folders.item(node, open=True)
         self.files.delete(*self.files.get_children())
         self.entries = {}
         for entry in result['entries']:
-            if entry['is_dir']:
-                child = self.folders.insert(node, 'end', text=entry['name'])
-                self.nodes[entry['path']] = child
-                self.folders.insert(child, 'end', text='加载…', caption=True)
             iid = self.files.insert('', 'end', text=('▸ ' if entry['is_dir'] else '') + entry['name'],
                                    values=('目录链接' if entry['is_dir'] and entry['link'] else '目录' if entry['is_dir'] else '链接' if entry['link'] else '文件',
                                            '—' if entry['is_dir'] else size_text(entry['size']), entry['modified']))
@@ -186,18 +160,6 @@ class ResourceViews:
                 self.files.focus_set()
                 break
         self.select_path = None
-
-    def expand(self, event=None):
-        node = self.folders.focus()
-        path = next((path for path, value in self.nodes.items() if value == node), None)
-        if path:
-            self.browse(path, node)
-
-    def select_folder(self, event=None):
-        selected = self.folders.selection()
-        path = next((path for path, value in self.nodes.items() if selected and value == selected[0]), None)
-        if path and path != self.current:
-            self.browse(path, selected[0])
 
     def enter(self, event=None):
         selected = self.files.selection()
