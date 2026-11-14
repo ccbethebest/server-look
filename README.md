@@ -7,7 +7,7 @@
 
 Windows 多服务器可视化管理工具：在同一个客户端查看 Linux 服务器的 CPU、内存、磁盘及 NVIDIA GPU / 昇腾 NPU 状态，管理运行任务和 Docker 容器，并完成文件浏览、双向传输、快速搜索和目录映射。
 
-**仓库**：[ccbethebest/server-look](https://github.com/ccbethebest/server-look) · **下载**：[Releases](https://github.com/ccbethebest/server-look/releases/latest) · **使用帮助**：[HELP.md](HELP.md) · **开发维护**：[DEVELOPMENT.md](DEVELOPMENT.md)
+**仓库**：[ccbethebest/server-look](https://github.com/ccbethebest/server-look) · **下载**：[Releases](https://github.com/ccbethebest/server-look/releases/latest) · **使用帮助**：[HELP.md](docs/HELP.md) · **开发维护**：[DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
 ### 功能概览
 
@@ -58,7 +58,7 @@ Windows 多服务器可视化管理工具：在同一个客户端查看 Linux �
 - 顶部四个图标入口：服务器、设置、搜索、帮助。服务器入口合并新增页面、连接／历史记录、连接全部与关闭页面；连接、刷新、断开与连接状态位于每个服务器页面上方。
 - 设置统一管理远程只读、黑蓝白配色、界面字号、按键字号／尺寸、顶部／侧栏入口、普通／最大化窗口和七项快捷键；保存后即时应用并在下次启动恢复。
 - 搜索支持本地及当前服务器，包含／完全匹配／通配符／正则，区分或忽略大小写，文件／文件夹筛选，递归开关和双击定位。最多 1,000 结果、100,000 条目、15 秒；不进入符号链接和目录联接，读取失败显示跳过数。取消与超时返回已完成批次，统计未完成时会注明。
-- 帮助内置详细离线说明，见 [HELP.md](HELP.md)。客户端单个 exe 即可启动，远程功能仍需服务器网络可达。
+- 帮助内置详细离线说明，见 [HELP.md](docs/HELP.md)。客户端单个 exe 即可启动，远程功能仍需服务器网络可达。
 - 发布保留 `dist/服务器看看-2.8.0.exe` 和此前要求保留的 `2.6.1.exe`。
 
 ## 2.4 多选传输与直接拖拽
@@ -168,7 +168,7 @@ python3 smoke_runtime.py
 
 ## 开发维护
 
-源码已按启动入口、主窗口、服务器页面、SSH 通信和配置拆分。请从 [开发与维护说明](DEVELOPMENT.md) 开始，其中包含文件职责、调用链、线程与页面状态、JSON 协议、字段说明、扩展步骤、测试和排错入口。客户端统一配置位于 `settings.py`，打包脚本自动读取版本。
+源码已按启动入口、主窗口、服务器页面、SSH 通信和配置拆分。请从 [开发与维护说明](docs/DEVELOPMENT.md) 开始，其中包含文件职责、调用链、线程与页面状态、JSON 协议、字段说明、扩展步骤、测试和排错入口。客户端统一配置位于 `settings.py`，打包脚本自动读取版本。
 
 ## 2.3.0 密码登录与 NVIDIA GPU
 
@@ -317,3 +317,7 @@ python3 smoke_runtime.py
 2.14.2：来源和目标路径右侧均内置“选择文件夹”按钮，随映射行滚动和调整位置；历史映射窗口默认约 1180×650，可拖动放大，小屏幕自动限制初始尺寸。
 
 点击“一键映射”先显示确认框，核对来源、目标及覆盖选项；点击“是”才开始，点击“否”取消。
+
+## 源码结构
+
+产品代码集中在 `server_look/`，按应用、界面、连接、文件、映射、翻译、远程采集和配置分层；`tests/`、`tools/`、`docs/` 分别存放测试、开发工具和文档。维护入口和验证命令见 [开发说明](docs/DEVELOPMENT.md)。

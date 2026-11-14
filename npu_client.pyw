@@ -1,5 +1,5 @@
 """Windows GUI entry point. Implementation lives in normal importable modules."""
-from desktop_app import main
+from server_look.app.desktop_app import main
 
 
 if __name__ == '__main__':

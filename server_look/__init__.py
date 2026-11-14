@@ -1,0 +1,1 @@
+"""Server Look desktop application."""

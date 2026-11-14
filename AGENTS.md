@@ -3,6 +3,6 @@
 - 所有代码必须简洁易懂、便于扩展；优先明确命名、单一职责和直观控制流。
 - 复用现有连接、传输和后台任务机制，避免重复实现或无意义中间变量；不为减少行数使用难读的嵌套表达式。
 - UI、协议和文件操作分模块；后台线程不得直接操作 Tk 控件。
-- 修改功能同时更新 HELP.md、README.md 与必要的 DEVELOPMENT.md；模块导航见 DEVELOPMENT.md。
+- 修改功能同时更新 docs/HELP.md、README.md 与必要的 docs/DEVELOPMENT.md；模块导航见 docs/DEVELOPMENT.md。
 - 针对行为变化运行相关测试，发布前执行 Windows 回归命令；Linux 监控测试在 Linux 运行。
 - 发布保留 2.6.1、2.8.0、2.14.2 和最新 exe；禁止打包本机连接历史、密码或其他凭据。
