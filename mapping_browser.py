@@ -6,7 +6,7 @@ import os
 from pathlib import Path, PurePosixPath
 import queue
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, ttk
 from mapping_rows import direction_label, server_label
 from table_sort import enable_sort
 
@@ -28,6 +28,7 @@ class DirectoryPane:
         self.kind = Path if location['server']=='local' else PurePosixPath
         self.root = self.current = self.kind(location['path'])
         self.closed = self.loading = False
+        self.pending_root = None
         self.cache, self.items = {}, {}
         self.events = queue.Queue()
         self.executor = ThreadPoolExecutor(max_workers=1)
@@ -35,12 +36,22 @@ class DirectoryPane:
         box.pack(side='left',fill='both',expand=True,padx=4)
         bar = ttk.Frame(box)
         bar.pack(fill='x')
-        ttk.Button(bar,text='↑',width=3,command=lambda:self.browse(self.current.parent)).pack(side='left')
+        ttk.Button(bar,text='↑',width=3,command=lambda:self.browse(self.current.parent,change_root=True)).pack(side='left')
         self.path = tk.StringVar(value=str(self.root))
         entry = ttk.Entry(bar,textvariable=self.path)
         entry.pack(side='left',fill='x',expand=True,padx=5)
-        entry.bind('<Return>',lambda event:self.browse(self.path.get()))
+        entry.bind('<Return>',lambda event:self.browse(self.path.get(),change_root=True))
         ttk.Button(bar,text='刷新',command=self.refresh).pack(side='right')
+        chooser = ttk.Frame(box)
+        chooser.pack(fill='x',pady=(6,0))
+        ttk.Button(chooser,text='选择文件夹',padding=(10,5),command=self.choose_folder).pack(side='left')
+        if self.kind is Path:
+            drives = [f'{letter}:/' for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' if Path(f'{letter}:/').is_dir()]
+            ttk.Label(chooser,text='磁盘').pack(side='left',padx=(10,4))
+            self.drive = ttk.Combobox(chooser,values=drives,state='readonly',width=8)
+            self.drive.pack(side='left')
+            self.drive.set(self.current.anchor)
+            self.drive.bind('<<ComboboxSelected>>',lambda event:self.browse(self.drive.get(),change_root=True))
         self.tree = ttk.Treeview(box,columns=('name','size','modified'),show='headings',selectmode='extended')
         for key,title,width in [('name','名称',220),('size','大小 / 字节',95),('modified','修改时间',145)]:
             self.tree.heading(key,text=title)
@@ -58,14 +69,30 @@ class DirectoryPane:
         self.timer = self.tree.after(60,self.poll)
         self.browse(self.root)
 
-    def browse(self,path,refresh=False):
+    def choose_folder(self):
+        if self.loading:
+            return
+        if self.connection:
+            from remote_directory_dialog import RemoteDirectoryDialog
+            RemoteDirectoryDialog(self.tree.winfo_toplevel(),self.connection,str(self.current),
+                                  lambda path:self.browse(path,change_root=True))
+        else:
+            path = filedialog.askdirectory(parent=self.tree.winfo_toplevel(),initialdir=str(self.current))
+            if path:
+                self.browse(path,change_root=True)
+
+    def browse(self,path,refresh=False,change_root=False):
         if self.closed or self.loading:
             return
+        if change_root and self.browser.owner.running:
+            self.status.set('请等待当前映射传输完成后修改目录')
+            return
         path = self.kind(path)
-        if not path.is_absolute() or '..' in path.parts or not path.is_relative_to(self.root):
+        if not path.is_absolute() or '..' in path.parts or (not change_root and not path.is_relative_to(self.root)):
             self.status.set('请在此映射目录内浏览')
             self.path.set(str(self.current))
             return
+        self.pending_root = path if change_root else None
         key = str(path)
         if not refresh and key in self.cache:
             self.show(self.cache[key])
@@ -82,6 +109,16 @@ class DirectoryPane:
 
     def show(self,data):
         current = self.kind(data['path'])
+        if self.pending_root is not None:
+            self.root = current
+            self.pending_root = None
+            index = 0 if self.source else 1
+            self.browser.record['locations'][index]['path'] = str(current)
+            owner = self.browser.owner
+            record = owner.rows.get(self.browser.record['id'])
+            if record:
+                record['locations'][index]['path'] = str(current)
+                owner.render(record['id'])
         if not current.is_relative_to(self.root):
             self.status.set('目录解析后超出映射范围，请选择实际目录路径')
             return
@@ -107,6 +144,8 @@ class DirectoryPane:
             if success:
                 self.show(data)
             else:
+                self.pending_root = None
+                self.path.set(str(self.current))
                 self.status.set('读取失败：'+data)
         self.timer = self.tree.after(80,self.poll)
 

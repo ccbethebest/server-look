@@ -24,8 +24,8 @@ class MappingDialog:
         self.window = win = tk.Toplevel(app.root)
         win.title('目录映射')
         win.transient(app.root)
-        win.geometry('980x530')
-        win.minsize(780,470)
+        win.geometry('980x570')
+        win.minsize(780,510)
         win.protocol('WM_DELETE_WINDOW',self.close)
         form = ttk.Frame(win,padding=14)
         form.pack(fill='both',expand=True)
@@ -49,7 +49,15 @@ class MappingDialog:
         self.directories.bind('<ButtonRelease-1>',self.schedule_edit)
         self.directories.bind('<Double-1>',self.open_browser)
         self.directories.bind('<Button-3>',self.context_menu)
-        ttk.Label(form,text='单击单元格修改方向或路径（可选择文件夹）；双击映射查看两侧目录；右键保存或取消映射。').pack(anchor='w')
+        folder_bar = ttk.Frame(form)
+        folder_bar.pack(fill='x',pady=(0,6))
+        self.folder_buttons = []
+        for index,label in enumerate(('选择来源文件夹','选择目标文件夹')):
+            button = ttk.Button(folder_bar,text=label,width=18,padding=(10,6),
+                                command=lambda index=index:self.choose_current_folder(index))
+            button.pack(side='left',padx=(0,10))
+            self.folder_buttons.append(button)
+        ttk.Label(form,text='选中映射后选择来源和目标文件夹；单击单元格可手动修改；双击查看两侧目录；右键保存或取消。').pack(anchor='w')
         options = ttk.LabelFrame(form,text='选中映射的传输选项',padding=10)
         options.pack(fill='x',pady=10)
         self.relay = tk.StringVar(value=str(page.resources.local.current))
@@ -223,9 +231,15 @@ class MappingDialog:
                 self.render(iid)
             entry.bind('<Return>',lambda event:(commit(),self.cancel_edit()))
             value.trace_add('write',lambda *args:commit())
-            ttk.Button(frame,text='…',width=3,command=lambda:self.choose_folder(iid,index,value)).pack(side='right',fill='y')
             entry.focus_set()
         frame.bind('<Escape>',lambda event:self.cancel_edit())
+
+    def choose_current_folder(self,index):
+        record = self.current()
+        if self.running or not record:
+            return
+        self.cancel_edit()
+        self.choose_folder(record['id'],index)
 
     def choose_folder(self,iid,index,value=None):
         record = self.rows[iid]

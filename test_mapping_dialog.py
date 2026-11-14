@@ -60,6 +60,20 @@ class MappingDialogTests(unittest.TestCase):
             self.dialog.choose_folder(iid,1)
         self.assertIsNone(self.dialog.edit_widget)
 
+    def test_folder_buttons_are_visible_and_edit_selected_mapping(self):
+        self.root.deiconify()
+        self.dialog.window.deiconify()
+        self.root.update()
+        self.assertEqual([button.cget('text') for button in self.dialog.folder_buttons],
+                         ['选择来源文件夹', '选择目标文件夹'])
+        for index, button in enumerate(self.dialog.folder_buttons):
+            self.assertTrue(button.winfo_ismapped())
+            self.assertGreater(button.winfo_width(), 120)
+            with patch('mapping_dialog.filedialog.askdirectory', return_value=str(self.target)) as picker:
+                button.invoke()
+                picker.assert_called_once()
+            self.assertEqual(self.record['locations'][index]['path'], str(self.target))
+
     def test_selected_paths_copy_only_requested_files(self):
         from multi_mapping import MultiMapping
         nested = self.source/'nested'
@@ -103,6 +117,23 @@ class MappingDialogTests(unittest.TestCase):
             self.assertEqual(run.call_args.args[1],(str(nested),))
         pane.browse(self.source.parent)
         self.assertEqual(pane.current,nested)
+
+    def test_browser_can_change_mapping_root_and_choose_local_folder(self):
+        browser = MappingBrowser(self.dialog,self.record)
+        self.dialog.browsers.append(browser)
+        pane = browser.panes[1]
+        self.wait_loaded(pane)
+        with patch('mapping_browser.filedialog.askdirectory', return_value=str(self.source)):
+            pane.choose_folder()
+        self.wait_loaded(pane)
+        self.assertEqual(pane.root,self.source)
+        self.assertEqual(browser.record['locations'][1]['path'],str(self.source))
+        self.assertEqual(self.record['locations'][1]['path'],str(self.source))
+        self.assertIn(self.source.anchor.replace('\\','/'), pane.drive['values'])
+        pane.browse(self.source/'missing',change_root=True)
+        self.wait_loaded(pane)
+        self.assertEqual(pane.root,self.source)
+        self.assertEqual(self.record['locations'][1]['path'],str(self.source))
 
     def test_remote_listing_reuses_connection_and_cache(self):
         connection = Mock()
