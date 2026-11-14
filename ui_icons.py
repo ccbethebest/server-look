@@ -1,6 +1,6 @@
 """Small code-drawn icons; no image files, fonts, or network dependencies."""
-import tkinter as tk
-from tkinter import ttk
+from localized_ui import tk
+from localized_ui import ttk
 
 # Polylines use a consistent 18px grid.
 SHAPES = {

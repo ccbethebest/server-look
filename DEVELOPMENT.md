@@ -1,5 +1,15 @@
 # 开发与维护说明
 
+## 设置控件
+
+`shortcut_capture.py` 负责实际键盘事件录入与允许的 Tk 快捷键格式校验；`settings_dialog.py` 使用明确的字号加减按钮，拦截配置选择框的滚轮事件。组合键保留 Shift 对字母大小写的影响，确保录入后可触发绑定。`test_settings_controls.py` 验证实际录入、触发、Esc 取消和清除禁用；配置项不得改回滚轮录入。
+
+## 2.15.0 维护入口
+
+`i18n.py` 与 `translations_en.py` 提供离线翻译；`localized_ui.py` 显示翻译后的文字，保留原始逻辑变量和路径。表格仅显式指定的 `localized_columns` / `caption_columns` 会翻译；后台服务器原始输出不翻译。新增界面文字时同步维护英文词条，帮助提供 `HELP.md` 和 `HELP.en.md`。语言保存到界面偏好，不改动连接或映射记录。
+
+`MappingDialog.open_browser` 按映射 id 复用未关闭的目录窗口，清除失效引用；主入口复用搜索与映射窗口，历史窗口和任务关系窗口也按身份复用。关闭窗口后允许重建，不使用全局时间节流，以免阻止用户正常打开其他映射。相关回归：`test_mapping_dialog`、`test_language`、`test_settings_controls`。
+
 ## 源码快速安装入口
 
 `install.cmd` 调用 `install.ps1`，检查 Python 3.12 与 Tk，创建项目内 `.venv`，按 `requirements.txt` 安装并验证依赖。`start.cmd` 只使用这个环境启动 GUI；依赖安装失败立即停止，不隐式修改全局 Python。`install.ps1 -Launch` 可安装后启动。EXE 构建继续复用 `build_client.ps1`，具体命令见 README。

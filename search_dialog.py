@@ -6,8 +6,8 @@ from table_sort import enable_sort
 import posixpath
 import queue
 import threading
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from localized_ui import tk
+from localized_ui import ttk, messagebox, filedialog
 from file_search import MODES, run_search, validate_search
 from ui_icons import button
 
@@ -62,6 +62,7 @@ class SearchDialog:
         ttk.Checkbutton(row, text='统计文件夹总大小（较慢）', variable=self.directory_sizes).pack(side='left')
         ttk.Label(row, text='仅匹配文件/文件夹名称，非文件内容', style='Muted.TLabel').pack(side='right')
         self.tree = ttk.Treeview(frame, columns=('kind', 'size', 'modified', 'path'), show='tree headings')
+        self.tree.localized_columns = (0,)
         for column, label, width in [('#0', '名称', 220), ('kind', '类型', 75), ('size', '大小（字节）', 120), ('modified', '修改时间', 155), ('path', '完整路径（双击定位）', 350)]:
             self.tree.heading(column, text=label)
             self.tree.column(column, width=width)

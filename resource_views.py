@@ -2,8 +2,8 @@
 import posixpath
 import time
 from collections import OrderedDict
-import tkinter as tk
-from tkinter import ttk
+from localized_ui import tk
+from localized_ui import ttk
 from ui_icons import button as icon_button
 from local_files import LocalFiles
 from table_sort import enable_sort
@@ -23,6 +23,7 @@ class ResourceViews:
     def __init__(self, page):
         self.page = page
         self.hardware = page.table('硬件配置', [('key', '配置项', 230), ('value', '服务器配置', 800)])
+        self.hardware.localized_columns = (0,)
         self.disks = page.table('磁盘与挂载', [('mount', '挂载目录', 250), ('device', '设备 / 远程源', 300),
                                             ('type', '类型', 100), ('total', '总容量', 120),
                                             ('used', '已用', 120), ('available', '可用', 120), ('percent', '使用率', 120)])
@@ -46,6 +47,7 @@ class ResourceViews:
         self.folders = self.tree(pane, (), 'tree')
         self.folders.heading('#0', text='目录树 · 点击展开')
         self.files = self.tree(pane, ('kind', 'size', 'modified'), 'tree headings')
+        self.files.localized_columns = (0,)
         self.files.configure(selectmode='extended')
         self.files.heading('#0', text='名称')
         for key, title, width in [('kind', '类型', 90), ('size', '大小', 110), ('modified', '修改时间', 175)]:
@@ -90,16 +92,16 @@ class ResourceViews:
         self.entries = {}
         for tree in (self.folders, self.files, self.hardware, self.disks):
             tree.delete(*tree.get_children())
-        node = self.folders.insert('', 'end', text='/ 服务器根目录', open=False)
+        node = self.folders.insert('', 'end', text='/ 服务器根目录', open=False, caption=True)
         self.nodes['/'] = node
-        self.folders.insert(node, 'end', text='加载…')
+        self.folders.insert(node, 'end', text='加载…', caption=True)
         self.hint.set('只读浏览 · 连接后点击“前往”，或展开目录树')
 
     def render(self, data):
         self.hardware.delete(*self.hardware.get_children())
         for key, value in data.get('hardware', {}).items():
             self.hardware.insert('', 'end', values=(key, size_text(value) if key.startswith('内存') else value))
-        self.hardware.insert('', 'end', values=('NPU / GPU 设备详情', '请切换“NPU / GPU 状态”：型号、健康状态、温度、功耗、显存及运行进程'))
+        self.hardware.insert('', 'end', caption_columns=(0, 1), values=('NPU / GPU 设备详情', '请切换“NPU / GPU 状态”：型号、健康状态、温度、功耗、显存及运行进程'))
         self.disks.delete(*self.disks.get_children())
         for index, disk in enumerate(data.get('disks', [])):
             percent = int(disk['percent'].strip('%')) if disk['percent'].strip('%').isdigit() else 0
@@ -168,7 +170,7 @@ class ResourceViews:
             if entry['is_dir']:
                 child = self.folders.insert(node, 'end', text=entry['name'])
                 self.nodes[entry['path']] = child
-                self.folders.insert(child, 'end', text='加载…')
+                self.folders.insert(child, 'end', text='加载…', caption=True)
             iid = self.files.insert('', 'end', text=('▸ ' if entry['is_dir'] else '') + entry['name'],
                                    values=('目录链接' if entry['is_dir'] and entry['link'] else '目录' if entry['is_dir'] else '链接' if entry['link'] else '文件',
                                            '—' if entry['is_dir'] else size_text(entry['size']), entry['modified']))

@@ -2,8 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import posixpath
 import queue
-import tkinter as tk
-from tkinter import ttk
+from localized_ui import tk, ttk
 
 
 class RemoteDirectoryDialog:

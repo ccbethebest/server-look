@@ -2,7 +2,7 @@
 from pathlib import Path
 import queue
 import threading
-from tkinter import ttk, StringVar, messagebox, simpledialog, Menu
+from localized_ui import ttk, StringVar, messagebox, simpledialog, Menu
 from ui_icons import button as icon_button
 
 from file_transfer import Transfer, open_local_folder
@@ -28,6 +28,7 @@ class LocalFiles:
         for title, command in [('上级', self.up), ('刷新', self.browse), ('打开窗口', self.open)]:
             icon_button(bar, text=title, command=command).pack(side='left', padx=2)
         self.files = ttk.Treeview(frame, columns=('kind',), show='tree headings', selectmode='extended')
+        self.files.localized_columns = (0,)
         self.files.heading('#0', text='本地名称')
         self.files.heading('kind', text='类型')
         self.files.column('kind', width=65, stretch=False)

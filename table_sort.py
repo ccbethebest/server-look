@@ -19,7 +19,7 @@ class TableSort:
         self.original = []
         self.labels = {}
         for column in ('#0', *tree['columns']):
-            label = tree.heading(column, 'text')
+            label = getattr(tree, '_headings', {}).get(column, tree.heading(column, 'text'))
             if label:
                 self.labels[column] = label
                 tree.heading(column, command=lambda c=column: self.toggle(c))

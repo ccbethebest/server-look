@@ -1,12 +1,16 @@
 """Saved mapping browser; deletion only changes configuration."""
-import tkinter as tk
-from tkinter import messagebox, ttk
+from localized_ui import tk, messagebox, ttk
 from directory_mapping import save_mappings
 from mapping_rows import direction_label
 
 
 def show_history(owner):
-    win = tk.Toplevel(owner.window)
+    existing = getattr(owner, 'history_window', None)
+    if existing is not None and existing.winfo_exists():
+        existing.deiconify()
+        existing.lift()
+        return
+    win = owner.history_window = tk.Toplevel(owner.window)
     win.title('历史映射查看')
     win.transient(owner.window)
     width = min(1180,win.winfo_screenwidth()-80)

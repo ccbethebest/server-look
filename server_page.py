@@ -2,9 +2,10 @@
 from concurrent.futures import ThreadPoolExecutor
 import json
 import queue
-import tkinter as tk
-from tkinter import messagebox, ttk
+from localized_ui import tk
+from localized_ui import messagebox, ttk
 from table_sort import enable_sort
+from i18n import subscribe, tr
 from ui_icons import button as icon_button
 
 from client_core import Connection, find_task, task_identity
@@ -36,6 +37,7 @@ class ServerPage:
             root.geometry('1250x820')
             root.minsize(1000, 680)
         self._build_widgets(host)
+        subscribe(self)
         if not embedded:
             root.protocol('WM_DELETE_WINDOW', self.close)
         self.buttons()
@@ -391,6 +393,10 @@ class ServerPage:
         widget.insert('1.0', text)
         widget.configure(state='disabled')
 
+    def refresh_language(self):
+        if not self.closed and self.root.winfo_exists() and not self.data.get('npu'):
+            self.write(self.npu, tr('连接服务器后显示 NPU / GPU 利用率、显存、功耗、温度和进程。'))
+
     def render(self):
         processes = self.data.get('processes', {})
         npu_count = sum(bool(proc.get('npu')) for proc in processes.values())
@@ -424,7 +430,7 @@ class ServerPage:
         self.tasks.sorting.refreshed()
         self.containers.sorting.refreshed()
         self.resources.render(self.data)
-        self.write(self.npu, self.data.get('npu', '连接服务器后显示 NPU / GPU 利用率、显存、功耗、温度和进程。'))
+        self.write(self.npu, self.data.get('npu') or tr('连接服务器后显示 NPU / GPU 利用率、显存、功耗、温度和进程。'))
         self.show_details()
 
     def select_task(self, event=None):

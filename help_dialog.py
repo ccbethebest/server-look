@@ -1,8 +1,31 @@
 """Offline help viewer; bundled Markdown remains readable in the source release."""
 import sys
 from pathlib import Path
-import tkinter as tk
-from tkinter import ttk
+from localized_ui import tk
+from localized_ui import ttk
+from i18n import language, subscribe, tr
+
+
+class HelpContent:
+    def __init__(self, app, text):
+        self.app, self.text = app, text
+        subscribe(self)
+        self.refresh_language()
+
+    def refresh_language(self):
+        if not self.text.winfo_exists():
+            return
+        name = 'HELP.en.md' if language() == 'en' else 'HELP.md'
+        source = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / name
+        try:
+            content = source.read_text(encoding='utf-8-sig')
+        except OSError:
+            content = tr('帮助文件缺失。请从完整发布包重新获取客户端。')
+        shortcuts = '\n'.join(f'{tr(name)}: {tr(key)}' for name, key in self.app.preferences['shortcuts'].items())
+        self.text.configure(state='normal')
+        self.text.delete('1.0', 'end')
+        self.text.insert('end', content + '\n\n' + tr('当前快捷键（以设置为准）') + '\n' + shortcuts)
+        self.text.configure(state='disabled')
 
 
 def show_help(app):
@@ -20,12 +43,5 @@ def show_help(app):
     scroll.pack(side='right', fill='y')
     text.configure(yscrollcommand=scroll.set)
     text.pack(fill='both', expand=True)
-    source = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'HELP.md'
-    try:
-        content = source.read_text(encoding='utf-8-sig')
-    except OSError:
-        content = '帮助文件缺失。请从完整发布包重新获取客户端。'
-    text.insert('end', content)
-    text.insert('end', '\n\n当前快捷键（以设置为准）\n' + '\n'.join(f'{name}：{key}' for name, key in app.preferences['shortcuts'].items()))
-    text.configure(state='disabled')
+    app.help_content = HelpContent(app, text)
     app.retheme()

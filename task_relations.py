@@ -1,6 +1,6 @@
 """Snapshot-based process ancestry and descendants; no inferred application dependencies."""
-import tkinter as tk
-from tkinter import ttk
+from localized_ui import tk
+from localized_ui import ttk
 
 
 def relation_rows(processes, task):
@@ -27,7 +27,15 @@ def relation_rows(processes, task):
 
 
 def show_relations(parent, processes, task, select):
+    windows = getattr(parent, '_relation_windows', {})
+    parent._relation_windows = windows
+    existing = windows.get(task['pid'])
+    if existing is not None and existing.winfo_exists():
+        existing.deiconify()
+        existing.lift()
+        return
     window = tk.Toplevel(parent)
+    windows[task['pid']] = window
     window.title(f"任务关系 · PID {task['pid']}")
     window.geometry('1000x520')
     window.transient(parent.winfo_toplevel())
@@ -35,6 +43,7 @@ def show_relations(parent, processes, task, select):
     frame.pack(fill='both', expand=True)
     ttk.Label(frame, text='按操作系统父 PID 展示进程关系快照；不代表程序内部的业务依赖。双击可定位任务。').pack(anchor='w', pady=(0, 8))
     tree = ttk.Treeview(frame, columns=('relation', 'started', 'command'), show='tree headings')
+    tree.localized_columns = (0,)
     for column, text, width in (('#0', 'PID / 父 PID', 210), ('relation', '关系', 110), ('started', '开始时间', 180), ('command', '命令', 650)):
         tree.heading(column, text=text)
         tree.column(column, width=width)

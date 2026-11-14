@@ -1,12 +1,13 @@
 """Desktop window and server-tab lifecycle; no SSH or process operations here."""
-import tkinter as tk
+from localized_ui import tk
 from pathlib import Path
 import sys
-from tkinter import messagebox, ttk
+from localized_ui import messagebox, ttk
 from ui_icons import navigation_button
 
 from server_page import ServerPage
 from connection_history import ConnectionHistory
+from i18n import set_language, tr
 from ui_preferences import load_preferences
 from theme import apply_theme, PALETTES, load_theme, save_theme
 from settings import APP_NAME, APP_VERSION, DEFAULT_SERVERS
@@ -21,13 +22,14 @@ class MultiServerApp:
         self.occupancy_details = {}
         root._serverlook_app = self
         self.preferences = load_preferences()
+        set_language(self.preferences['language'])
         root._serverlook_options = self.preferences
         self.bound_shortcuts = []
         self.dialogs = []
         apply_theme(root, load_theme())
         icon = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'assets' / 'server.ico'
         root.iconbitmap(default=str(icon))
-        root.title(f'{APP_NAME} {APP_VERSION}')
+        root.title(f'{tr(APP_NAME)} {APP_VERSION}')
         width = min(1320, root.winfo_screenwidth() - 40)
         height = min(900, root.winfo_screenheight() - 90)
         root.geometry(f'{width}x{height}')
@@ -91,7 +93,7 @@ class MultiServerApp:
     def show_search(self):
         from search_dialog import SearchDialog
         for dialog in self.dialogs:
-            if isinstance(dialog, SearchDialog) and not dialog.closed and dialog.window.state() == 'withdrawn':
+            if isinstance(dialog, SearchDialog) and not dialog.closed and dialog.window.winfo_exists():
                 dialog.window.deiconify()
                 dialog.window.lift()
                 return
@@ -102,6 +104,11 @@ class MultiServerApp:
 
     def show_mapping(self, remote=None):
         from mapping_dialog import MappingDialog
+        for dialog in self.dialogs:
+            if isinstance(dialog, MappingDialog) and dialog.window.winfo_exists():
+                dialog.window.deiconify()
+                dialog.window.lift()
+                return
         page = self.current_page()
         if page:
             self.dialogs.append(MappingDialog(self, page, remote))
@@ -162,6 +169,8 @@ class MultiServerApp:
 
     def apply_preferences(self, values):
         self.preferences = values
+        set_language(values['language'])
+        self.root.title(f'{tr(APP_NAME)} {APP_VERSION}')
         self.root._serverlook_options = values
         self.navigation.pack_forget()
         self.workarea.pack_forget()

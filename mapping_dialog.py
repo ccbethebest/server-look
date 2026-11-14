@@ -4,8 +4,8 @@ from pathlib import Path, PurePosixPath
 import queue
 import threading
 import uuid
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from localized_ui import tk
+from localized_ui import filedialog, messagebox, ttk
 
 from directory_mapping import endpoint, load_mappings, save_mappings
 from mapping_rows import expand_records, direction_label, server_label
@@ -290,7 +290,16 @@ class MappingDialog:
                 messagebox.showinfo('选择目录','请先连接服务器：'+server_label(item['server']),parent=self.window)
                 return
             from remote_directory_dialog import RemoteDirectoryDialog
-            RemoteDirectoryDialog(self.window,page.connection,item['path'],chosen)
+            pickers = getattr(self, 'folder_pickers', {})
+            self.folder_pickers = pickers
+            key = (iid, index)
+            existing = pickers.get(key)
+            if existing and not existing.closed and existing.window.winfo_exists():
+                existing.selected = chosen
+                existing.window.deiconify()
+                existing.window.lift()
+                return
+            pickers[key] = RemoteDirectoryDialog(self.window,page.connection,item['path'],chosen)
             self.app.retheme()
 
     def validated(self,record):
@@ -364,6 +373,13 @@ class MappingDialog:
         try:
             record = self.validated(record)
             from mapping_browser import MappingBrowser
+            self.browsers = [browser for browser in self.browsers
+                             if not browser.closed and browser.window.winfo_exists()]
+            for browser in self.browsers:
+                if browser.record['id'] == record['id']:
+                    browser.window.deiconify()
+                    browser.window.lift()
+                    return
             browser = MappingBrowser(self,record)
             self.browsers.append(browser)
             self.app.retheme()
@@ -457,4 +473,7 @@ class MappingDialog:
             self.button_timer = None
         for browser in self.browsers:
             browser.close()
+        for picker in getattr(self, 'folder_pickers', {}).values():
+            if not picker.closed:
+                picker.close()
         self.window.destroy()

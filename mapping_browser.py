@@ -5,8 +5,8 @@ from datetime import datetime
 import os
 from pathlib import Path, PurePosixPath
 import queue
-import tkinter as tk
-from tkinter import filedialog, ttk
+from localized_ui import tk
+from localized_ui import filedialog, ttk
 from mapping_rows import direction_label, server_label
 from table_sort import enable_sort
 

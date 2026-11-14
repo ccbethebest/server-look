@@ -11,6 +11,17 @@ from mapping_browser import MappingBrowser
 
 
 class MappingDialogTests(unittest.TestCase):
+    def test_repeated_open_reuses_window_and_closed_window_can_reopen(self):
+        self.dialog.open_browser()
+        first = self.dialog.browsers[0]
+        self.dialog.open_browser()
+        self.assertEqual(len(self.dialog.browsers), 1)
+        self.assertIs(self.dialog.browsers[0], first)
+        first.close()
+        self.dialog.open_browser()
+        self.assertEqual(len(self.dialog.browsers), 1)
+        self.assertIsNot(self.dialog.browsers[0], first)
+
     def setUp(self):
         self.root = tk.Tk()
         self.root.withdraw()

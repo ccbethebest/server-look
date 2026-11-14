@@ -3,8 +3,8 @@ from pathlib import Path
 import queue
 import tempfile
 import threading
-import tkinter as tk
-from tkinter import ttk, messagebox
+from localized_ui import tk
+from localized_ui import ttk, messagebox
 
 from file_transfer import Transfer, local_name
 

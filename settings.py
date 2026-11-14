@@ -1,7 +1,7 @@
 """Desktop defaults. No credentials or per-server runtime state belong here."""
 
 APP_NAME = '服务器看看'
-APP_VERSION = '2.14.2'
+APP_VERSION = '2.15.0'
 DEFAULT_SERVERS = ()
 POLL_INTERVAL_MS = 100
 REFRESH_INTERVAL_MS = 3000

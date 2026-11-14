@@ -1,5 +1,5 @@
 """Compact rounded server tabs with independent idle highlighting."""
-import tkinter as tk
+from localized_ui import tk
 from tkinter import font
 from theme import PALETTES
 from ui_icons import Tooltip
