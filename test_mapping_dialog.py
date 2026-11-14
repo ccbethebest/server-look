@@ -64,15 +64,48 @@ class MappingDialogTests(unittest.TestCase):
         self.root.deiconify()
         self.dialog.window.deiconify()
         self.root.update()
-        self.assertEqual([button.cget('text') for button in self.dialog.folder_buttons],
-                         ['选择来源文件夹', '选择目标文件夹'])
-        for index, button in enumerate(self.dialog.folder_buttons):
+        self.assertEqual([button.cget('text') for button in self.dialog.folder_buttons[self.record['id']]],
+                         ['选择文件夹', '选择文件夹'])
+        for index, button in enumerate(self.dialog.folder_buttons[self.record['id']]):
             self.assertTrue(button.winfo_ismapped())
-            self.assertGreater(button.winfo_width(), 120)
+            self.assertGreater(button.winfo_width(), 100)
+            box = self.dialog.directories.bbox(self.record['id'],f'#{index+2}')
+            self.assertGreater(button.winfo_x(),box[0])
+            self.assertEqual(button.winfo_y(),box[1]+3)
             with patch('mapping_dialog.filedialog.askdirectory', return_value=str(self.target)) as picker:
                 button.invoke()
                 picker.assert_called_once()
             self.assertEqual(self.record['locations'][index]['path'], str(self.target))
+
+    def test_row_buttons_select_their_own_mapping_and_clean_up(self):
+        self.dialog.new_record()
+        second = self.dialog.current()
+        self.dialog.directories.selection_set(self.record['id'])
+        with patch('mapping_dialog.filedialog.askdirectory',return_value=str(self.target)):
+            self.dialog.folder_buttons[second['id']][0].invoke()
+        self.assertEqual(self.dialog.current()['id'],second['id'])
+        self.assertEqual(second['locations'][0]['path'],str(self.target))
+        self.dialog.remove()
+        self.assertNotIn(second['id'],self.dialog.folder_buttons)
+
+    def test_confirmation_can_cancel_or_start_selected_mapping(self):
+        with patch('mapping_dialog.messagebox.askyesno',return_value=False) as confirm, patch.object(self.dialog,'run') as run:
+            self.dialog.confirm_run()
+            run.assert_not_called()
+            self.assertIn(str(self.target),confirm.call_args.args[1])
+            confirm.return_value = True
+            self.dialog.confirm_run()
+            run.assert_called_once_with(self.record)
+
+    def test_history_window_opens_larger(self):
+        self.root.deiconify()
+        self.dialog.window.deiconify()
+        self.dialog.show_history()
+        self.root.update()
+        history = next(win for win in self.dialog.window.winfo_children() if isinstance(win,tk.Toplevel))
+        self.assertGreaterEqual(history.winfo_width(),900)
+        self.assertGreaterEqual(history.winfo_height(),500)
+        history.destroy()
 
     def test_selected_paths_copy_only_requested_files(self):
         from multi_mapping import MultiMapping

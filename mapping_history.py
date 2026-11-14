@@ -9,6 +9,10 @@ def show_history(owner):
     win = tk.Toplevel(owner.window)
     win.title('历史映射查看')
     win.transient(owner.window)
+    width = min(1180,win.winfo_screenwidth()-80)
+    height = min(650,win.winfo_screenheight()-120)
+    win.geometry(f'{width}x{height}')
+    win.minsize(min(900,width),min(500,height))
     tree = ttk.Treeview(win, columns=('direction', 'source', 'target'), show='headings', selectmode='extended', height=12)
     for key, title, width in [('direction','方向',220),('source','来源目录',300),('target','目标目录',300)]:
         tree.heading(key,text=title)

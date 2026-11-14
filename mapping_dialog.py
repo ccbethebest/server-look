@@ -21,6 +21,7 @@ class MappingDialog:
         self.running = self.syncing = False
         self.mapping = None
         self.edit_widget = self.edit_timer = None
+        self.button_timer = None
         self.window = win = tk.Toplevel(app.root)
         win.title('目录映射')
         win.transient(app.root)
@@ -37,27 +38,26 @@ class MappingDialog:
         self.history.pack(side='left',fill='x',expand=True)
         self.history.bind('<<ComboboxSelected>>',self.use_history)
         ttk.Button(bar,text='历史映射查看',command=self.show_history).pack(side='right',padx=(8,0))
-        self.directories = ttk.Treeview(form,columns=('direction','source','target'),show='headings',selectmode='browse',height=8)
+        self.folder_buttons = {}
+        ttk.Style(win).configure('Mapping.Treeview',rowheight=38)
+        self.directories = ttk.Treeview(form,style='Mapping.Treeview',columns=('direction','source','target'),show='headings',selectmode='browse',height=8)
         for key,title,width in [('direction','映射方向',240),('source','来源文件夹',320),('target','目标文件夹',320)]:
             self.directories.heading(key,text=title)
             self.directories.column(key,width=width,minwidth=140)
         self.directories.pack(fill='both',expand=True,pady=(12,6))
         scroll = ttk.Scrollbar(self.directories,command=self.directories.yview)
         scroll.pack(side='right',fill='y')
-        self.directories.configure(yscrollcommand=scroll.set)
+        def scrolled(first,last):
+            scroll.set(first,last)
+            self.position_folder_buttons()
+        self.directories.configure(yscrollcommand=scrolled)
+        self.directories.bind('<Configure>',lambda event:self.position_folder_buttons())
         self.directories.bind('<<TreeviewSelect>>',self.select)
         self.directories.bind('<ButtonRelease-1>',self.schedule_edit)
+        self.directories.bind('<ButtonRelease-1>',lambda event:self.position_folder_buttons(),add='+')
         self.directories.bind('<Double-1>',self.open_browser)
         self.directories.bind('<Button-3>',self.context_menu)
-        folder_bar = ttk.Frame(form)
-        folder_bar.pack(fill='x',pady=(0,6))
-        self.folder_buttons = []
-        for index,label in enumerate(('选择来源文件夹','选择目标文件夹')):
-            button = ttk.Button(folder_bar,text=label,width=18,padding=(10,6),
-                                command=lambda index=index:self.choose_current_folder(index))
-            button.pack(side='left',padx=(0,10))
-            self.folder_buttons.append(button)
-        ttk.Label(form,text='选中映射后选择来源和目标文件夹；单击单元格可手动修改；双击查看两侧目录；右键保存或取消。').pack(anchor='w')
+        ttk.Label(form,text='路径右侧可选择文件夹；单击路径可手动修改；双击查看两侧目录；右键保存或取消。').pack(anchor='w')
         options = ttk.LabelFrame(form,text='选中映射的传输选项',padding=10)
         options.pack(fill='x',pady=10)
         self.relay = tk.StringVar(value=str(page.resources.local.current))
@@ -82,7 +82,7 @@ class MappingDialog:
         footer.pack(fill='x')
         self.speed = tk.StringVar(value='当前传输速度：未开始')
         ttk.Label(footer,textvariable=self.speed).pack(side='left')
-        ttk.Button(footer,text='一键映射',command=self.run).pack(side='right')
+        ttk.Button(footer,text='一键映射',command=self.confirm_run).pack(side='right')
         self.refresh_history()
         for record in self.available_records:
             self.add_history(record)
@@ -137,6 +137,11 @@ class MappingDialog:
 
     def render(self,iid):
         record = self.rows[iid]
+        if iid not in self.folder_buttons:
+            self.folder_buttons[iid] = [ttk.Button(self.directories,text='选择文件夹',width=12,
+                command=lambda index=index,iid=iid:self.choose_row_folder(iid,index)) for index in range(2)]
+        if self.button_timer is None:
+            self.button_timer = self.window.after_idle(self.refresh_folder_buttons)
         saved = any(item == record for item in self.records)
         self.directories.item(iid,values=(direction_label(record)+('  ✓' if saved else ''),
             record['locations'][0]['path'],record['locations'][1]['path']))
@@ -196,7 +201,8 @@ class MappingDialog:
             return
         record = self.rows[iid]
         frame = self.edit_widget = ttk.Frame(self.directories)
-        frame.place(x=box[0],y=box[1],width=box[2],height=box[3])
+        width = box[2] if column=='#1' else box[2]-112
+        frame.place(x=box[0],y=box[1],width=width,height=box[3])
         if column == '#1':
             servers = ['local',*self.connected()]
             for item in record['locations']:
@@ -234,12 +240,34 @@ class MappingDialog:
             entry.focus_set()
         frame.bind('<Escape>',lambda event:self.cancel_edit())
 
-    def choose_current_folder(self,index):
-        record = self.current()
-        if self.running or not record:
+    def refresh_folder_buttons(self):
+        self.button_timer = None
+        self.position_folder_buttons()
+
+    def position_folder_buttons(self):
+        if not self.directories.winfo_exists():
             return
+        for iid,buttons in list(self.folder_buttons.items()):
+            if iid not in self.rows:
+                for button in buttons:
+                    button.destroy()
+                del self.folder_buttons[iid]
+                continue
+            for index,button in enumerate(buttons):
+                box = self.directories.bbox(iid,f'#{index+2}')
+                if box:
+                    x,y,width,height = box
+                    button.place(x=x+width-112,y=y+3,width=106,height=height-6)
+                else:
+                    button.place_forget()
+
+    def choose_row_folder(self,iid,index):
+        if self.running or iid not in self.rows:
+            return
+        self.directories.selection_set(iid)
+        self.select()
         self.cancel_edit()
-        self.choose_folder(record['id'],index)
+        self.choose_folder(iid,index)
 
     def choose_folder(self,iid,index,value=None):
         record = self.rows[iid]
@@ -307,6 +335,7 @@ class MappingDialog:
             self.cancel_edit()
             self.directories.delete(record['id'])
             del self.rows[record['id']]
+            self.position_folder_buttons()
 
     def context_menu(self,event):
         self.cancel_edit()
@@ -367,6 +396,18 @@ class MappingDialog:
                     browser.refresh()
         self.timer = self.window.after(100,self.poll)
 
+    def confirm_run(self):
+        record = self.current()
+        if self.running or not record:
+            return
+        source,target = record['locations']
+        overwrite = '是（覆盖目标中的同名文件）' if record.get('overwrite') else '否（仅补齐缺少的文件）'
+        details = (f"来源：{server_label(source['server'])} · {source['path']}\n"
+                   f"目标：{server_label(target['server'])} · {target['path']}\n"
+                   f"覆盖已有文件：{overwrite}\n\n是否确定开始映射？")
+        if messagebox.askyesno('确认目录映射',details,parent=self.window):
+            self.run(record)
+
     def run(self,record=None,selected=()):
         local = self.page.resources.local
         try:
@@ -411,6 +452,9 @@ class MappingDialog:
             self.mapping.cancel()
         self.cancel_edit()
         self.window.after_cancel(self.timer)
+        if self.button_timer is not None:
+            self.window.after_cancel(self.button_timer)
+            self.button_timer = None
         for browser in self.browsers:
             browser.close()
         self.window.destroy()
