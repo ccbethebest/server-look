@@ -9,7 +9,7 @@ import server_resources as resources
 
 class ResourceTests(unittest.TestCase):
     def test_directory_listing_includes_hidden_files_and_directories(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent / '.tmp') as temp:
+        with tempfile.TemporaryDirectory() as temp:
             Path(temp, 'folder').mkdir()
             Path(temp, '.hidden').write_text('abc')
             result = resources.list_directory(temp)
@@ -19,7 +19,7 @@ class ResourceTests(unittest.TestCase):
             self.assertEqual(entries['.hidden']['size'], 3)
 
     def test_invalid_directory_is_reported(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent / '.tmp') as temp:
+        with tempfile.TemporaryDirectory() as temp:
             file = Path(temp, 'file')
             file.touch()
             with self.assertRaises(NotADirectoryError):
