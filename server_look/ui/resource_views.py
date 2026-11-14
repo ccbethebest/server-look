@@ -4,7 +4,7 @@ import time
 from collections import OrderedDict
 from server_look.localization.localized_ui import tk
 from server_look.localization.localized_ui import ttk
-from server_look.ui.ui_icons import button as icon_button
+from server_look.ui.ui_icons import file_navigation
 from server_look.files.local_files import LocalFiles
 from server_look.ui.table_sort import enable_sort
 
@@ -38,14 +38,15 @@ class ResourceViews:
         columns.add(remote, weight=1)
         ttk.Label(remote, text='服务器文件', font=('', 11, 'bold')).pack(anchor='w')
         self.path = tk.StringVar(value='/')
-        entry = ttk.Entry(remote, textvariable=self.path)
-        entry.pack(fill='x', pady=6)
+        path_bar = ttk.Frame(remote)
+        path_bar.pack(fill='x', pady=6)
+        entry = ttk.Entry(path_bar, textvariable=self.path)
+        entry.pack(fill='both', expand=True)
         entry.bind('<Return>', lambda event: self.browse(self.path.get(), force=True))
         bar = ttk.Frame(remote)
         bar.pack(fill='x', pady=(0, 6))
-        for title, command in [('上级', self.up), ('根目录', lambda: self.browse('/')),
-                               ('前往 / 刷新', lambda: self.browse(self.path.get(), force=True))]:
-            icon_button(bar, text=title, style='Nav.TButton', command=command).pack(side='left', padx=2)
+        file_navigation(bar, self.up, lambda: self.browse('/'),
+                        lambda: self.browse(self.path.get(), force=True))
         self.files = self.tree(remote, ('kind', 'size', 'modified'), 'tree headings')
         self.files.localized_columns = (0,)
         self.files.configure(selectmode='extended')
@@ -57,9 +58,20 @@ class ResourceViews:
         enable_sort(self.files)
         self.files.bind('<Double-1>', self.enter)
         self.hint = tk.StringVar(value='只读浏览 · 连接后点击“前往”，支持隐藏文件、目录和符号链接')
-        ttk.Label(remote, textvariable=self.hint).pack(fill='x', pady=(6, 0))
+        footer = ttk.Frame(remote)
+        footer.pack(fill='x', pady=6)
+        ttk.Label(footer, textvariable=self.hint).pack(fill='x')
+        progress_space = ttk.Frame(remote)
+        progress_space.pack(fill='x')
         self.reset()
         self.local = LocalFiles(self, columns)
+        # Reserve identical row heights so both file lists share top and bottom edges.
+        self.frame.update_idletasks()
+        path_bar.configure(height=self.local.path_bar.winfo_reqheight())
+        path_bar.pack_propagate(False)
+        bar.configure(height=self.local.toolbar.winfo_reqheight())
+        bar.pack_propagate(False)
+        progress_space.configure(height=self.local.progress.winfo_reqheight())
 
     @staticmethod
     def tree(pane, columns, show):
@@ -70,11 +82,19 @@ class ResourceViews:
         horizontal = ttk.Scrollbar(frame, orient='horizontal', command=tree.xview)
         tree.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
         tree.grid(row=0, column=0, sticky='nsew')
+        tree.bind('<ButtonPress-1>', ResourceViews.clear_blank_selection, add='+')
         vertical.grid(row=0, column=1, sticky='ns')
         horizontal.grid(row=1, column=0, sticky='ew')
         frame.rowconfigure(0, weight=1)
         frame.columnconfigure(0, weight=1)
         return tree
+
+    @staticmethod
+    def clear_blank_selection(event):
+        tree = event.widget
+        if tree.identify_region(event.x, event.y) not in ('heading', 'separator') and not tree.identify_row(event.y):
+            tree.selection_remove(*tree.selection())
+            tree.focus('')
 
     def reset(self):
         if hasattr(self, 'local'):

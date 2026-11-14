@@ -6,7 +6,7 @@ import os
 import time
 from datetime import datetime
 from server_look.localization.localized_ui import ttk, StringVar, messagebox, simpledialog, Menu
-from server_look.ui.ui_icons import button as icon_button, Tooltip
+from server_look.ui.ui_icons import button as icon_button, file_navigation
 
 from server_look.files.file_transfer import Transfer, open_local_folder
 from server_look.ui.table_sort import enable_sort
@@ -24,7 +24,7 @@ class LocalFiles:
         pane.add(frame, weight=1)
         ttk.Label(frame, text='本地文件', font=('', 11, 'bold')).pack(anchor='w')
         self.path = StringVar(value=str(Path.home()))
-        path_bar = ttk.Frame(frame)
+        self.path_bar = path_bar = ttk.Frame(frame)
         path_bar.pack(fill='x', pady=6)
         self.drive = StringVar()
         drives = [d for d in os.listdrives()] if hasattr(os, 'listdrives') else ['/']
@@ -34,17 +34,15 @@ class LocalFiles:
         entry = ttk.Entry(path_bar, textvariable=self.path)
         entry.pack(side='left', fill='x', expand=True)
         entry.bind('<Return>', lambda event: self.browse())
-        bar = ttk.Frame(frame)
+        self.toolbar = bar = ttk.Frame(frame)
         bar.pack(fill='x', pady=(0, 6))
-        for symbol, title, command in [('↑', '上级', self.up), ('⌂', '根目录', self.go_root),
-                                        ('↻', '刷新', self.browse)]:
-            button = ttk.Button(bar, text=symbol, width=2, style='Nav.TButton', command=command)
-            button.pack(side='left', padx=1)
-            button.tooltip = Tooltip(button, title)
+        file_navigation(bar, self.up, self.go_root, self.browse)
         icon_button(bar, text='打开窗口', style='Nav.TButton', command=self.open).pack(side='left', padx=2)
+        actions = ttk.Frame(bar)
+        actions.pack(side='right')
         for title, command in [('上传', lambda: self.start('upload')),
                                ('下载', lambda: self.start('download')), ('取消', self.cancel)]:
-            icon_button(bar, text=title, style='Danger.TButton' if title == '取消' else 'Accent.TButton',
+            icon_button(actions, text=title, style='Danger.TButton' if title == '取消' else 'Accent.TButton',
                         command=command).pack(side='left', padx=2)
         self.files = resources.tree(frame, ('kind', 'size', 'modified'), 'tree headings')
         self.files.localized_columns = (0,)
@@ -55,7 +53,7 @@ class LocalFiles:
         self.files.configure(selectmode='extended')
         enable_sort(self.files)
         self.files.bind('<Double-1>', self.enter)
-        footer = ttk.Frame(frame)
+        self.footer = footer = ttk.Frame(frame)
         footer.pack(fill='x', pady=6)
         self.elapsed = StringVar()
         ttk.Label(footer, textvariable=self.elapsed).pack(side='right', padx=(6, 0))

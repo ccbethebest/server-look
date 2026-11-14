@@ -13,6 +13,7 @@ class RemoteDrag:
     def __init__(self, local):
         self.local = local
         self.remote = local.resources
+        self.feedback = None
         self.origin = None
         self.dragging = False
         self.ready_key = None
@@ -21,6 +22,8 @@ class RemoteDrag:
         tree.bind('<ButtonPress-1>', self.press, add='+')
         tree.bind('<B1-Motion>', self.motion, add='+')
         tree.bind('<ButtonRelease-1>', self.release, add='+')
+        tree.bind('<Destroy>', lambda event: self.clear_feedback(), add='+')
+        tree.bind('<Escape>', self.cancel_drag, add='+')
         # Ordinary Tk roots used by unit tests do not load the native extension.
         if not tree.tk.call('info', 'commands', 'tkdnd::drag_source'):
             return
@@ -62,13 +65,39 @@ class RemoteDrag:
         target = self.local.items.get(row)
         return target if target and target.is_dir() else self.local.current
 
+    def clear_feedback(self):
+        if self.feedback is not None:
+            self.feedback.destroy()
+            self.feedback = None
+        if self.remote.files.winfo_exists():
+            self.remote.files.configure(cursor='')
+
+    def cancel_drag(self, event=None):
+        self.origin = None
+        self.dragging = False
+        self.clear_feedback()
+
+    def show_feedback(self, event, destination):
+        tree = self.remote.files
+        tree.configure(cursor='hand2' if destination is not None else 'fleur')
+        if self.feedback is None:
+            self.feedback = tk.Toplevel(self.local.page.root)
+            self.feedback.overrideredirect(True)
+            self.feedback.attributes('-topmost', True)
+            ttk.Label(self.feedback, text=f'下载 {len(tree.selection())} 项',
+                      style='Tooltip.TLabel', padding=(10, 5)).pack()
+        self.feedback.geometry(f'+{event.x_root + 18}+{event.y_root + 22}')
+
     def motion(self, event):
         if self.origin is None:
             return
         if max(abs(event.x_root - self.origin[0]), abs(event.y_root - self.origin[1])) < 7:
             return
+        if not self.remote.files.selection():
+            return
         self.dragging = True
         destination = self.local_destination(event.x_root, event.y_root)
+        self.show_feedback(event, destination)
         if destination is not None:
             self.local.status.set(f'松开鼠标下载到：{destination}')
             return 'break'
@@ -77,12 +106,14 @@ class RemoteDrag:
                   and root.winfo_rooty() <= event.y_root < root.winfo_rooty() + root.winfo_height())
         tree = self.remote.files
         if not inside and tree.tk.call('info', 'commands', 'tkdnd::_init_drag'):
+            self.clear_feedback()
             self.origin = None
             tree.tk.call('tkdnd::_init_drag', 1, str(tree), event.state,
                          event.x_root, event.y_root, event.x, event.y)
         return 'break'
 
     def release(self, event):
+        self.clear_feedback()
         dragging = self.dragging and self.origin is not None
         self.origin = None
         self.dragging = False

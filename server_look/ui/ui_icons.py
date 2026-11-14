@@ -110,3 +110,13 @@ def button(parent, **kwargs):
         color = ttk.Style(widget).lookup(kwargs.get('style', 'TButton'), 'foreground') or '#e8f1fc'
         update_icon(widget, color)
     return widget
+
+
+def file_navigation(parent, up, root, refresh):
+    """Matching, comfortably sized navigation controls for both file panes."""
+    for symbol, title, command in [('↑', '上级', up), ('⌂', '根目录', root),
+                                    ('↻', '刷新', refresh)]:
+        widget = ttk.Button(parent, text=symbol, width=3, padding=(8, 5),
+                            style='Nav.TButton', command=command)
+        widget.pack(side='left', padx=2)
+        widget.tooltip = Tooltip(widget, title)

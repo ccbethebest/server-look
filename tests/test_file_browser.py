@@ -36,3 +36,16 @@ class ExplorerTests(unittest.TestCase):
             self.assertRegex(values[2], r'\d{4}-\d{2}-\d{2}')
             local.go_root()
             self.assertEqual(local.current, Path(Path(tmp).anchor))
+
+    def test_blank_click_clears_selection_in_both_panes(self):
+        self.root.geometry('1250x800')
+        self.page.tabs.select(self.page.resources.frame)
+        self.root.update()
+        for tree in (self.page.resources.files, self.page.resources.local.files):
+            tree.delete(*tree.get_children())
+            row = tree.insert('', 'end', text='selected.txt')
+            tree.selection_set(row)
+            self.root.update()
+            tree.event_generate('<ButtonPress-1>', x=20, y=tree.winfo_height() - 10)
+            self.root.update()
+            self.assertEqual(tree.selection(), ())

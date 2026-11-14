@@ -114,3 +114,23 @@ class FileDragTests(unittest.TestCase):
                 self.page.readonly.set(True)
                 self.assertEqual(self.local.drag.upload(event), 'refuse_drop')
                 self.assertEqual(upload.call_count, 1)
+
+    def test_internal_drag_shows_feedback_and_clears_it_on_release(self):
+        self.root.geometry('1250x800')
+        self.page.tabs.select(self.remote.frame)
+        self.root.update()
+        row = self.remote.files.insert('', 'end', text='model.bin')
+        self.remote.entries[row] = {'path': '/model.bin'}
+        self.remote.files.selection_set(row)
+        drag = self.local.drag
+        drag.origin = (0, 0)
+        event = SimpleNamespace(x_root=self.local.files.winfo_rootx() + 20,
+                                y_root=self.local.files.winfo_rooty() + 100,
+                                x=20, y=100, state=0)
+        drag.motion(event)
+        self.assertIsNotNone(drag.feedback)
+        self.assertEqual(str(self.remote.files['cursor']), 'hand2')
+        with patch.object(drag, 'download_to'):
+            drag.release(event)
+        self.assertIsNone(drag.feedback)
+        self.assertEqual(str(self.remote.files['cursor']), '')
