@@ -1,5 +1,8 @@
 # 服务器看看 2.14.0
 
+> 当前 GitHub Release 已提供源码压缩包和快捷安装脚本。便携 EXE 上传受到发布端企业网络策略限制，暂未提供在线附件；可按下方源码安装步骤使用，也可自行构建 EXE。
+
+
 Windows 多服务器可视化管理工具：在同一个客户端查看 Linux 服务器的 CPU、内存、磁盘及 NVIDIA GPU / 昇腾 NPU 状态，管理运行任务和 Docker 容器，并完成文件浏览、双向传输、快速搜索和目录映射。
 
 **仓库**：[ccbethebest/server-look](https://github.com/ccbethebest/server-look) · **下载**：[Releases](https://github.com/ccbethebest/server-look/releases/latest) · **使用帮助**：[HELP.md](HELP.md) · **开发维护**：[DEVELOPMENT.md](DEVELOPMENT.md)
