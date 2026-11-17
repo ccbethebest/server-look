@@ -1,0 +1,99 @@
+"""Close the selected Python tab and recover the shell-to-editor bridge."""
+from pathlib import Path
+import subprocess
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+from tests.test_terminal_recovery import TerminalRecoveryTests
+from server_look.transport.terminal_editor import EditorBridge, editor_command, editor_setup
+
+
+class SessionEditorFixTests(TerminalRecoveryTests):
+    def test_close_button_removes_python_and_keeps_shell_usable(self):
+        shell = self.item
+        self.panel.new_python()
+        python = list(self.panel.sessions.values())[-1]
+        self.panel.actions[2].invoke()
+        self.assertTrue(python['ended'])
+        self.assertFalse(python['frame'].winfo_exists())
+        python['session'].close.assert_called_once()
+        shell['session'].close.assert_not_called()
+        self.assertEqual(self.panel.tabs.select(), str(shell['frame']))
+        shell['ready'] = True
+        self.panel.send(shell, 'pwd\r')
+        shell['session'].send.assert_called_once_with('pwd\r')
+        self.panel.actions[2].invoke()
+        self.panel.actions[2].invoke()  # An empty notebook is safe to close again.
+        self.assertFalse(self.panel.sessions)
+
+    def test_command_entry_reinstalls_bridge_and_routes_fragmented_request(self):
+        self.item['ready'] = True
+        self.panel.page.resources = MagicMock()
+        self.item['command_entry'].insert(0, 'vim "中文 notes.txt"')
+        self.panel.execute_command(self.item)
+        sent = self.item['session'].send.call_args.args[0]
+        self.assertIn('vim()', sent)
+        self.assertTrue(sent.endswith('; vim "中文 notes.txt"\r'))
+        request = self.item['editor_bridge'].prefix + '@/tmp/中文 notes.txt\x07'
+        for part in (request[:3], request[3:30], request[30:]):
+            self.item['session'].events.put(('data', part))
+            self.poll()
+        self.panel.page.resources.editors.open.assert_called_once_with('/tmp/中文 notes.txt', remote=True)
+
+    def test_visual_return_replaces_whole_command_even_with_cursor_in_middle(self):
+        self.item['ready'] = True
+        screen, line = self.item['screen'], self.item['shell_line']
+        self.item['stream'].feed('root# ')
+        line.record(screen, 'vim notes.txt')
+        self.item['stream'].feed('vim notes.txt')
+        line.record(screen, '\x1b[D')
+        self.item['stream'].feed('\x1b[D')
+        self.assertTrue(line.matches(screen))
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        sent = self.item['session'].send.call_args.args[0]
+        self.assertTrue(sent.startswith('\x05\x15unalias vi vim'))
+        self.assertTrue(sent.endswith('; vim notes.txt\r'))
+
+    def test_recovery_uses_current_directory_and_overrides_broken_function(self):
+        bash = Path('C:/Program Files/Git/bin/bash.exe')
+        shell = str(bash) if bash.exists() else '/bin/bash'
+        command = editor_command('vim "notes with spaces.txt"', 'recovery')
+        result = subprocess.run([shell, '--noprofile', '--norc'],
+                                input='vim() { printf BROKEN; }\ncd /\n' + command + '\nprintf READY',
+                                text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text, paths = EditorBridge('recovery').feed(result.stdout)
+        self.assertEqual(paths, ['/notes with spaces.txt'])
+        self.assertEqual(text, 'READY')
+
+    def test_native_editor_and_other_commands_are_preserved(self):
+        for command in ('command vim notes.txt', 'vim -R notes.txt', 'pwd', 'vim a b',
+                        'cd /tmp', 'export NAME=value', 'ls -la | head -n 3',
+                        'printf hello > notes.txt', 'cat < notes.txt', 'sleep 1 &',
+                        'false; echo $?', 'echo "中文"', 'sudo whoami', 'docker ps'):
+            self.assertEqual(editor_command(command, 'fixture'), command)
+
+    def test_basic_shell_commands_match_without_editor_bridge(self):
+        import tempfile
+        bash = Path('C:/Program Files/Git/bin/bash.exe')
+        shell = str(bash) if bash.exists() else '/bin/bash'
+        commands = ['cd /', 'pwd', 'export SERVER_LOOK_TEST=value',
+                    'printf "%s\\n" "$SERVER_LOOK_TEST"',
+                    'printf "one\\ntwo\\n" | head -n 1',
+                    'false; printf "exit=%s\\n" "$?"',
+                    'printf "中文\\n"', 'printf data > sample.txt', 'cat < sample.txt']
+        outputs = []
+        for bridge in (False, True):
+            with tempfile.TemporaryDirectory() as folder:
+                # Use the temporary directory for redirect tests, then exercise cd.
+                script = commands[2:] + commands[:2]
+                if bridge:
+                    script = [editor_setup('fixture')] + [editor_command(c, 'fixture') for c in script]
+                result = subprocess.run([shell, '--noprofile', '--norc'], cwd=folder,
+                                        input='\n'.join(script), text=True, encoding='utf-8',
+                                        capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual((Path(folder) / 'sample.txt').read_text(), 'data')
+                outputs.append((result.stdout, result.stderr))
+        self.assertEqual(outputs[0], outputs[1])
+        self.assertIn('value\none\nexit=1\n中文\ndata/', outputs[1][0])

@@ -51,9 +51,23 @@ class TextEditor:
         for label, callback in [('保存 (Ctrl+S)', self.save), ('撤销 (Ctrl+Z)', lambda: self.edit('<<Undo>>')),
                                 ('重做 (Ctrl+Y)', lambda: self.edit('<<Redo>>')),
                                 ('剪切', lambda: self.edit('<<Cut>>')), ('复制', lambda: self.edit('<<Copy>>')),
-                                ('粘贴', lambda: self.edit('<<Paste>>'))]:
+                                ('粘贴', lambda: self.edit('<<Paste>>')), ('查找 (Ctrl+F)', self.show_search)]:
             ttk.Button(toolbar, text=label, command=callback).pack(side='left', padx=2)
+        self.search_bar = ttk.Frame(self.window, padding=6)
+        self.search_query = tk.StringVar(master=self.window)
+        self.search_status = tk.StringVar(master=self.window)
+        ttk.Label(self.search_bar, text='查找：').pack(side='left')
+        self.search_entry = ttk.Entry(self.search_bar, textvariable=self.search_query, width=28)
+        self.search_entry.pack(side='left', fill='x', expand=True)
+        ttk.Button(self.search_bar, text='上一个', command=lambda: self.find_text(backwards=True)).pack(side='left', padx=2)
+        ttk.Button(self.search_bar, text='下一个', command=self.find_text).pack(side='left', padx=2)
+        ttk.Label(self.search_bar, textvariable=self.search_status).pack(side='left', padx=4)
+        ttk.Button(self.search_bar, text='关闭查找', command=self.hide_search).pack(side='left')
+        self.search_entry.bind('<Return>', self.find_text)
+        self.search_entry.bind('<Shift-Return>', lambda event: self.find_text(backwards=True))
+        self.search_entry.bind('<Escape>', self.hide_search)
         area = ttk.Frame(self.window)
+        self.area = area
         area.pack(fill='both', expand=True)
         self.text = tk.Text(area, undo=True, autoseparators=True, maxundo=-1, wrap='none')
         vertical = ttk.Scrollbar(area, command=self.text.yview)
@@ -72,8 +86,45 @@ class TextEditor:
         self.text.bind('<Control-z>', lambda event: self.edit('<<Undo>>'))
         self.text.bind('<Control-y>', lambda event: self.edit('<<Redo>>'))
         self.text.bind('<Control-a>', self.select_all)
+        self.window.bind('<Control-f>', self.show_search)
+        self.window.bind('<Control-F>', self.show_search)
+        self.window.bind('<F3>', self.find_text)
+        self.window.bind('<Shift-F3>', lambda event: self.find_text(backwards=True))
+        self.text.tag_configure('search_match', background='#ffe08a', foreground='#171717')
         self.start('load')
         self.poll_job = self.window.after(80, self.poll)
+
+    def show_search(self, event=None):
+        self.search_bar.pack(fill='x', before=self.area)
+        self.search_entry.focus_set()
+        self.search_entry.selection_range(0, 'end')
+        return 'break'
+
+    def hide_search(self, event=None):
+        self.search_bar.pack_forget()
+        self.text.tag_remove('search_match', '1.0', 'end')
+        self.text.focus_set()
+        return 'break'
+
+    def find_text(self, event=None, backwards=False):
+        query = self.search_query.get()
+        previous = self.text.tag_ranges('search_match')
+        start = str(previous[0 if backwards else 1]) if previous else ('end-1c' if backwards else '1.0')
+        self.text.tag_remove('search_match', '1.0', 'end')
+        if not query:
+            self.search_status.set('请输入查找文字')
+            return 'break'
+        # Omitting stopindex lets Tk wrap around the document once. Literal search
+        # treats punctuation as text and Tk supplies the correct Unicode length.
+        count = tk.IntVar(master=self.window)
+        match = self.text.search(query, start, backwards=backwards, exact=True, count=count)
+        if match:
+            self.text.tag_add('search_match', match, match + '+' + str(count.get()) + 'c')
+            self.text.see(match)
+            self.search_status.set('已找到 · ' + match)
+        else:
+            self.search_status.set('未找到匹配文字')
+        return 'break'
 
     def edit(self, action):
         if not self.busy:

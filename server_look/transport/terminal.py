@@ -103,7 +103,14 @@ class TerminalSession:
                     pass
 
     def close(self):
+        if self.stop.is_set():
+            return
         self.stop.set()
+        # Paramiko close may wait for a transport write lock or a stalled peer.
+        # The UI caller must return immediately, including during connection setup.
+        threading.Thread(target=self._close_resources, daemon=True).start()
+
+    def _close_resources(self):
         if self.channel:
             self.channel.close()
         if self.client:

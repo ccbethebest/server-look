@@ -93,6 +93,34 @@ class EditorWindowTests(unittest.TestCase):
         self.root.update()
         self.assertFalse(editor.busy)
 
+    def test_find_unicode_literal_wrap_backwards_and_edited_content(self):
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        editor.text.delete('1.0', 'end')
+        editor.text.insert('1.0', '你好.*\nother\n你好.*')
+        editor.show_search()
+        editor.search_query.set('你好.*')
+        editor.find_text()
+        self.assertEqual(str(editor.text.index('search_match.first')), '1.0')
+        editor.find_text()
+        self.assertEqual(str(editor.text.index('search_match.first')), '3.0')
+        editor.find_text()
+        self.assertEqual(str(editor.text.index('search_match.first')), '1.0')
+        editor.find_text(backwards=True)
+        self.assertEqual(str(editor.text.index('search_match.first')), '3.0')
+        editor.text.delete('3.0', 'end-1c')
+        editor.find_text()
+        self.assertEqual(str(editor.text.index('search_match.first')), '1.0')
+        editor.search_query.set('missing')
+        editor.find_text()
+        self.assertEqual(editor.text.tag_ranges('search_match'), ())
+        self.assertIn('未找到', editor.search_status.get())
+        editor.search_query.set('')
+        editor.find_text()
+        editor.hide_search()
+        self.assertFalse(editor.search_bar.winfo_ismapped())
+
     def test_undo_redo_save_and_close_confirmations(self):
         from unittest.mock import patch
         self.manager.open(self.path)

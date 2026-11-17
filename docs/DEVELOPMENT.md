@@ -1,3 +1,15 @@
+## 2.18.7 会话关闭与 vim 弹窗修复 / Session close and graphical editing
+
+- 文本编辑窗口新增“查找 (Ctrl+F)”，按文字精确匹配，支持中文、上一个/下一个、Enter/Shift+Enter、F3/Shift+F3 和循环查找；Esc 关闭查找。搜索不修改文件内容。
+- “关闭当前会话”立即移除当前 Shell/Python 标签，SSH 通道在后台释放，避免网络关闭阻塞整个界面；其他会话继续可用。
+- `vim 文件名` / `vi 文件名` 从命令输入栏执行，或在终端直接输入单行后回车，自动恢复图形编辑桥接，打开与文件浏览相同的独立文本编辑器。Ctrl+S 保存、Ctrl+Z 撤销，未保存关闭仍询问保存/放弃/取消。
+- 桥接使用 Shell 内置命令，不再要求远端 python3；初始化为单行，兼容已有 vi/vim 别名，按服务器当前目录解析中文、空格文件名。升级后请新建 Shell 会话。`command vim 文件名` 仍使用原生 Vim；sudo、容器和嵌套 SSH 不在当前服务器编辑桥接范围。
+- Closing a session removes its tab immediately and releases SSH resources in a worker. Simple vi/vim commands restore the graphical editor bridge without remote Python. Existing text-file safety and unsaved-change prompts remain in effect. Open a new shell after upgrading.
+
+- 关闭通道可能等待 Paramiko 写锁，`TerminalSession.close` 先设置 stop，再由后台线程释放资源；Tk 先忘记标签并销毁控件，停止消费该会话事件。
+- `terminal_editor.editor_setup` 用单行 eval 避免已有别名干扰函数定义，printf 内置命令输出带会话令牌的 OSC 请求；解析器兼容旧 JSON 和新绝对路径消息。直接输入的命令仅在 ShellLine 与当前屏幕匹配时重建桥接，先 Ctrl+E/Ctrl+U 替换整行，避免光标位于中间时留下后缀。
+- `test_session_editor_fix` 覆盖按钮关闭 Python、其他 Shell 保持可用、中文路径分片请求、光标居中回车、真实 Bash 重建失效函数和原生命令保留；`test_terminal_recovery` 覆盖 SSH 关闭阻塞时 UI 调用及时返回。另以真实 Bash 对比桥接前后的 cd、变量、管道、重定向、退出码及中文输出；真实目标 Linux 服务器仍需实际使用验收。
+
 ## 2.18.6 传输进度与右键操作 / Transfer progress and text actions
 
 - 上传、下载、本地复制及拖拽传输先统计整批大小，显示“已传输 / 总计 / 百分比”和完成项数；文件夹包含子目录，多文件不再重置百分比。统计期间显示提示，仍可取消。仅旧版 OpenSSH 回退通道不提供实时字节数，会明确说明。
@@ -28,10 +40,10 @@
 
 - 新建命令行后，输入 `vim 文件名` 或 `vi 文件名`，直接打开与文件浏览相同的独立文本编辑窗口；按命令行当前目录解析路径，支持空格与中文文件名。Ctrl+S 保存、Ctrl+Z 撤销，未保存关闭时询问保存/放弃/取消。
 - 采用图形编辑替代启动 Vim，不会留下等待退出的 Vim 进程；终端立即返回提示符，关闭窗口后继续使用。重复打开同一文件会唤起已有窗口。
-- 适用于支持 POSIX 函数的当前 SSH shell，远端需有 python3；只处理单个非选项文件参数。不改远端配置文件；Python 会话、sudo、docker exec、嵌套 SSH 及多文件/带参数命令保持原执行方式。仅替换当前会话的 vi/vim 别名，不修改持久配置。
+- 适用于支持 POSIX 函数的当前 SSH shell，无需远端 python3（2.18.7 起）；只处理单个非选项文件参数。不改远端配置文件；Python 会话、sudo、docker exec、嵌套 SSH 及多文件/带参数命令保持原执行方式。仅替换当前会话的 vi/vim 别名，不修改持久配置。
 - 需要原生 Vim 时使用 `command vim 文件名`。新文件、可执行文件、二进制及超过 4 MiB 的文件不在图形编辑范围；沿用编辑器的只读、断连、外部修改与编码保护。
 - 补齐应用方向键、F1–F12、修饰键、括号粘贴、备用屏幕恢复与中文光标位置。类似兼容性问题后续优先复用合适的图形窗口；当前并未自动重写其他终端程序。
-- In a new POSIX SSH shell with python3, `vim FILE` / `vi FILE` opens the existing graphical editor relative to the shell's current directory. Ctrl+S saves, Ctrl+Z undoes, and closing unsaved edits asks Save/Discard/Cancel. No Vim process starts; the prompt returns immediately. `command vim FILE` runs native Vim. Options, multiple files, sudo, containers, nested SSH and Python sessions retain normal execution. vi/vim aliases are replaced only in this shell session; persistent profiles remain unchanged. Existing text files only, up to 4 MiB, with the editor's existing permission, conflict and encoding checks. Application keys, function keys, bracketed paste, alternate-screen restoration and wide-character cursor positions have regression coverage; this does not assert full Xshell parity or target-server verification.
+- In a new POSIX SSH shell, `vim FILE` / `vi FILE` opens the existing graphical editor relative to the shell's current directory. Ctrl+S saves, Ctrl+Z undoes, and closing unsaved edits asks Save/Discard/Cancel. No Vim process starts; the prompt returns immediately. `command vim FILE` runs native Vim. Options, multiple files, sudo, containers, nested SSH and Python sessions retain normal execution. vi/vim aliases are replaced only in this shell session; persistent profiles remain unchanged. Existing text files only, up to 4 MiB, with the editor's existing permission, conflict and encoding checks. Application keys, function keys, bracketed paste, alternate-screen restoration and wide-character cursor positions have regression coverage; this does not assert full Xshell parity or target-server verification.
 
 # 开发与维护说明
 

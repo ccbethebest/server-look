@@ -40,6 +40,9 @@ class TerminalTextActionsTests(CommandUsabilityTests):
 
     def test_delete_middle_selection_moves_remote_cursor_and_deletes(self):
         self.type_echo('echo abcXYZdef')
+        self.item['output'].focus_force()
+        self.root.update()
+        self.assertEqual(self.root.focus_get(), self.item['output'])
         self.select('XYZ')
         self.item['output'].event_generate('<KeyPress-Delete>')
         self.root.update()

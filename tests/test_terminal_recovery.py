@@ -76,5 +76,31 @@ class TerminalRecoveryTests(unittest.TestCase):
         self.assertNotEqual(previous, self.panel.poll_job)
 
 
+class NonblockingCloseTests(unittest.TestCase):
+    def test_close_returns_while_channel_shutdown_is_blocked(self):
+        import threading
+        from server_look.transport.terminal import TerminalSession
+        release, entered, returned = threading.Event(), threading.Event(), threading.Event()
+        session = TerminalSession.__new__(TerminalSession)
+        session.stop = threading.Event()
+        session.client = None
+        def blocking_close():
+            entered.set()
+            release.wait(3)
+        session.channel = MagicMock(close=blocking_close)
+        def close():
+            session.close()
+            returned.set()
+        caller = threading.Thread(target=close, daemon=True)
+        caller.start()
+        try:
+            self.assertTrue(entered.wait(1))
+            self.assertTrue(returned.wait(.3), 'SSH shutdown must not block the Tk caller')
+            self.assertTrue(session.stop.is_set())
+        finally:
+            release.set()
+            caller.join(2)
+
+
 if __name__ == '__main__':
     unittest.main()

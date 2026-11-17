@@ -36,6 +36,11 @@ class EditorBridgeTests(unittest.TestCase):
         bridge.feed('\x1b]777;server-look;fixture;' + 'x' * 20000)
         self.assertLess(len(bridge.pending), 10000)
 
+    def test_setup_is_one_input_line_and_needs_no_remote_python(self):
+        program = editor_setup('fixture')
+        self.assertNotIn('\n', program)
+        self.assertNotIn('python', program)
+
     def test_real_shell_resolves_quoted_filename_and_returns_to_prompt(self):
         import os
         bash = Path('C:/Program Files/Git/bin/bash.exe')
@@ -43,9 +48,7 @@ class EditorBridgeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'notes $x.txt'
             path.write_text('original', encoding='utf-8')
-            # Use the same Python as this test on Windows; production uses remote python3.
-            import sys
-            program = editor_setup('fixture', python=sys.executable.replace('\\', '/'))
+            program = editor_setup('fixture')
             aliases = "alias vi='printf alias-vi' vim='printf alias-vim'\n"
             result = subprocess.run([shell, '--noprofile', '--norc', '-O', 'expand_aliases'],
                                     input=aliases + program + '\nvim "notes $x.txt"\nvi "notes $x.txt"\nprintf DONE',
@@ -54,7 +57,8 @@ class EditorBridgeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             text, paths = EditorBridge('fixture').feed(result.stdout)
             self.assertEqual(text.strip(), 'DONE')
-            self.assertEqual([Path(item) for item in paths], [path, path])
+            expected = subprocess.check_output([shell, '-c', 'pwd'], cwd=folder, text=True).strip() + '/' + path.name
+            self.assertEqual(paths, [expected, expected])
             self.assertEqual(path.read_text(), 'original')
 
 

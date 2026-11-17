@@ -5,7 +5,7 @@ import secrets
 from tkinter import font as tkfont
 from server_look.localization.localized_ui import tk, ttk, messagebox, Menu
 from server_look.transport.terminal import TerminalSession, python_command
-from server_look.transport.terminal_editor import EditorBridge, editor_setup
+from server_look.transport.terminal_editor import EditorBridge, editor_setup, editor_command
 from server_look.transport.terminal_input import encode_key
 from server_look.transport.terminal_selection import ShellLine
 from server_look.ui.text_actions import bind_text_menu, has_selection
@@ -168,7 +168,10 @@ class CommandPanel:
 
     def execute_command(self, item):
         entry = item['command_entry']
-        if self.transmit(item, entry.get() + '\r'):
+        command = entry.get()
+        if item['editor_bridge']:
+            command = editor_command(command, item['editor_bridge'].token)
+        if self.transmit(item, command + '\r'):
             entry.delete(0, 'end')
         return 'break'
 
@@ -181,6 +184,13 @@ class CommandPanel:
         if item['output'].tag_ranges('sel') and event.keysym in ('BackSpace', 'Delete'):
             return self.delete_selection(item)
         text = encode_key(event.keysym, event.char, event.state, (1 << 5) in item['screen'].mode)
+        if (text == '\r' and item.get('shell_line') is not None
+                and (1 << 5) not in item['screen'].mode):
+            line = item['shell_line']
+            if line.matches(item['screen']):
+                command = editor_command(line.text, item['editor_bridge'].token)
+                if command != line.text:
+                    text = '\x05\x15' + command + '\r'
         if text:
             self.send(item, text)
         return 'break'
@@ -384,10 +394,14 @@ class CommandPanel:
         messagebox.showinfo('SSH 密钥', result, parent=self.frame)
 
     def close_current(self):
-        item = self.sessions.pop(self.tabs.select(), None)
+        selected = str(self.tabs.select())
+        item = self.sessions.pop(selected, None)
         if item:
-            item['session'].close()
+            item['ended'] = True
+            self.tabs.forget(selected)
             item['frame'].destroy()
+            item['session'].close()
+            self.notice.set('当前会话已关闭')
 
     def disconnect(self):
         for item in self.sessions.values():
