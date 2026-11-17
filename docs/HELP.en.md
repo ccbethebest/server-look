@@ -50,3 +50,9 @@ Double-click folders to enter. Use ↑ for parent, ⌂ for root and ↻ to refre
 Upload, Download and Cancel share the local toolbar. Transfers target the opposite current directory; dropping on a folder targets that folder. The footer shows completed top-level items / total and elapsed time. SFTP callbacks also show the current file percentage; system SFTP shows item counts and an activity bar. Cancellation may leave incomplete files.
 
 File browsing: click empty space to clear selection. Both panes share larger navigation buttons and aligned lists; transfer buttons sit on the right. Dragging server files into the local pane shows a moving download label; Escape cancels the drag.
+
+
+Version 2.17.0
+Open multiple SSH terminals or persistent Python sessions from Command line. Ctrl+Enter runs multiline Python. Detect/generate keys reuses existing local pairs; Install public key appends only the public key to the current remote account. Read-only mode blocks interactive sessions and remote key changes.
+Global UI scale in Settings supports 50–200%. Task details can query working directory, script/data path clues, open files, parent processes and available SSH source addresses. These clues cannot always identify the human operator or source computer.
+End all NPU tasks requires confirmation (default No). It targets confirmed Ascend NPU processes only, rechecks live device occupancy and process start times, and uses pidfd to avoid PID reuse. It reports permission failures. Unsaved results are lost; service managers may restart workers. It does not stop whole containers or NVIDIA GPU tasks.

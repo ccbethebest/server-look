@@ -26,9 +26,9 @@ def show_settings(app):
     variables = {key: (tk.BooleanVar(value=value) if isinstance(value, bool) else tk.IntVar(value=value) if isinstance(value, int) else tk.StringVar(value=value)) for key, value in values.items() if key not in ('shortcuts', 'language')}
     language = tk.StringVar(value=LANGUAGES[values['language']])
     theme = tk.StringVar(value=app.theme_name.get())
-    ttk.Checkbutton(general, text='远程只读（应用于全部服务器）', variable=variables['readonly']).grid(row=0, column=0, columnspan=2, sticky='w', pady=8)
-    fields = [('语言 / Language', language, tuple(LANGUAGES.values())), ('界面配色', theme, tuple(PALETTES)), ('界面字体大小', variables['font_size'], tuple(range(8, 19))), ('按键字体大小', variables['button_font'], tuple(range(8, 19))), ('按键与图标大小', variables['button_size'], ('紧凑', '标准', '宽松')), ('入口按键布局', variables['navigation'], ('顶部横排', '左侧竖排')), ('窗口布局', variables['window'], ('普通窗口', '最大化'))]
-    for row, (label, variable, choices) in enumerate(fields, 1):
+    ttk.Checkbutton(general, text='远程只读（应用于全部服务器）', variable=variables['readonly']).grid(row=9, column=0, columnspan=2, sticky='w', pady=8)
+    fields = [('全局大小修正（%）', variables['global_scale'], tuple(range(50, 201, 10))), ('语言 / Language', language, tuple(LANGUAGES.values())), ('界面配色', theme, tuple(PALETTES)), ('界面字体大小', variables['font_size'], tuple(range(8, 19))), ('按键字体大小', variables['button_font'], tuple(range(8, 19))), ('按键与图标大小', variables['button_size'], ('紧凑', '标准', '宽松')), ('入口按键布局', variables['navigation'], ('顶部横排', '左侧竖排')), ('窗口布局', variables['window'], ('普通窗口', '最大化'))]
+    for row, (label, variable, choices) in enumerate(fields):
         ttk.Label(general, text=label).grid(row=row, column=0, sticky='w', pady=7)
         if label in ('界面字体大小', '按键字体大小'):
             control = ttk.Frame(general)

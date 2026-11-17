@@ -65,3 +65,11 @@ python -m compileall -q server_look tests tools
 ### 文件浏览布局与进度
 `ui/resource_views.py` 管理服务器侧列表及双栏容器；`files/local_files.py` 管理本地导航、元数据列和紧凑工具栏。两侧复用滚动列表创建和三态排序；不再重复显示服务器目录树。
 `Transfer(progress=callback)` 发出完成顶层项数和总项数；SFTP 回调另含当前文件的字节数。回调只写队列，`LocalFiles.poll` 在主线程更新界面与耗时。系统 SFTP 不提供字节百分比，不推测该值。`tests/test_file_browser.py` 覆盖元数据、根目录及项数进度。
+
+## 2.17.0 维护补充
+
+- `ui/command_panel.py` 管理终端视图、pyte 屏幕与 Python 编辑区；`transport/terminal.py` 在线程内收发 SSH 通道，使用有界队列向 Tk 主线程传递事件。断线/只读切换关闭通道。
+- `transport/ssh_keys.py` 管理本地密钥和追加公钥；不上传私钥，拒绝覆盖和远端密钥路径符号链接。
+- `ui/scaling.py` 缓存原始布局尺寸，避免多次缩放累积；主题使用 Tk 全局缩放处理字体。
+- `task_details` 是按需只读查询；`kill_npu` 仅接收确认的 PID/启动时间集合，服务端再次核验实时 NPU 占用，通过 pidfd 发送信号。
+- 新增终端、缩放、密钥和 NPU 批量终止回归测试。真实 SSH/PTTY、权限及 NPU 驱动行为需在目标 Linux 服务器补充验收。

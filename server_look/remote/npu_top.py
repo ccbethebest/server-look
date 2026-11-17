@@ -550,5 +550,95 @@ def main():
         pass
 
 
+def kill_npu_tasks(targets):
+    """Kill only confirmed identities still reported by npu-smi, never new arrivals."""
+    if not hasattr(os, 'pidfd_open') or not hasattr(signal, 'pidfd_send_signal'):
+        raise RuntimeError('Safe kill requires Linux pidfd support (kernel 5.3+, Python 3.9+)')
+    live = parse_npu_processes(run(['npu-smi', 'info']))
+    protected = protected_pids(processes())
+    sent, skipped, errors = [], [], []
+    identities = {(int(t['pid']), int(t['ticks'])) for t in targets}
+    for pid, ticks in sorted(identities):
+        fd = None
+        try:
+            if pid <= 1 or pid in protected or pid not in live:
+                skipped.append(pid)
+                continue
+            fd = os.pidfd_open(pid)
+            current = read_process(pid)
+            if not current or current['ticks'] != ticks:
+                skipped.append(pid)
+                continue
+            signal.pidfd_send_signal(fd, signal.SIGKILL)
+            sent.append(pid)
+        except ProcessLookupError:
+            skipped.append(pid)
+        except OSError as exc:
+            errors.append(f'{pid}: {exc}')
+        finally:
+            if fd is not None:
+                os.close(fd)
+    message = f'SIGKILL: {len(sent)}; skipped: {len(skipped)}; failed: {len(errors)}'
+    if errors:
+        message += '\n' + '\n'.join(errors)
+    return {'message': message, 'killed': sent, 'skipped': skipped, 'errors': errors}
+
+
+def task_details(pid, ticks):
+    """Read bounded provenance clues, without exposing the full process environment."""
+    current = read_process(pid)
+    if not current or current['ticks'] != ticks:
+        raise RuntimeError('Task exited or PID was reused')
+    base = Path('/proc') / str(pid)
+    result = {'pid': pid, 'ticks': ticks, 'user': current['user'],
+              'note': '路径和打开文件仅为数据来源线索；SSH 来源地址可能经过跳板或容器，不能确定操作人或电脑名称。'}
+    errors = []
+    for name in ('cwd', 'exe'):
+        try:
+            result[name] = os.readlink(base / name)
+        except OSError as exc:
+            errors.append(f'{name}: {exc}')
+    try:
+        argv = (base / 'cmdline').read_bytes().decode(errors='replace').strip('\0').split('\0')
+        result['arguments'] = argv
+        result['script_and_data_path_clues'] = [a for a in argv if '/' in a or a.endswith(('.py', '.sh', '.json', '.yaml', '.csv', '.parquet'))][:80]
+    except OSError as exc:
+        errors.append(str(exc))
+    try:
+        opened = []
+        for entry in (base / 'fd').iterdir():
+            if len(opened) >= 60:
+                break
+            try:
+                target = os.readlink(entry)
+                if target.startswith('/') and target not in opened:
+                    opened.append(target)
+            except OSError:
+                pass
+        result['open_file_clues'] = opened
+    except OSError as exc:
+        errors.append(str(exc))
+    ancestors, seen, ancestor = [], set(), current
+    while ancestor and ancestor['pid'] not in seen and len(ancestors) < 20:
+        seen.add(ancestor['pid'])
+        ancestors.append({k: ancestor[k] for k in ('pid', 'ppid', 'user', 'command')})
+        try:
+            environment = (Path('/proc') / str(ancestor['pid']) / 'environ').read_bytes()
+            for entry in environment.split(b'\0'):
+                key, _, value = entry.partition(b'=')
+                if key in (b'SSH_CONNECTION', b'SSH_CLIENT') and key.decode() not in result:
+                    result[key.decode()] = value.decode(errors='replace')[:300]
+        except OSError:
+            pass
+        ancestor = read_process(ancestor['ppid'])
+    result['launcher_chain'] = ancestors
+    result.setdefault('SSH_CONNECTION', '未保留 SSH 来源信息，无法确定来源电脑')
+    result['errors'] = errors
+    final = read_process(pid)
+    if not final or final['ticks'] != ticks:
+        raise RuntimeError('Task changed while reading details')
+    return result
+
+
 if __name__ == '__main__':
     main()

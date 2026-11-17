@@ -65,7 +65,7 @@ class ServerTabs(tk.Canvas):
         x = 2
         for index, tab in enumerate(app.notebook.tabs()):
             label = app.notebook.tab(tab, 'text')
-            width = face.measure(label) + 32
+            width = face.measure(label) / (app.preferences.get('global_scale', 100) / 100) + 32
             active = tab == app.notebook.select()
             fill = selected if active else raised
             mark = app.occupancy_marks.get(tab)
@@ -78,4 +78,6 @@ class ServerTabs(tk.Canvas):
             self.create_rectangle(x + 14, 3, x + width - 14, 31, fill=fill, outline='', tags=tag)
             self.create_text(x + width / 2, 17, text=label, fill=foreground, font=face, tags=tag)
             x += width + 6
-        self.configure(scrollregion=(0, 0, x, 36))
+        factor = app.preferences.get('global_scale', 100) / 100
+        self.scale('all', 0, 0, factor, factor)
+        self.configure(height=round(36 * factor), scrollregion=(0, 0, x * factor, 36 * factor))

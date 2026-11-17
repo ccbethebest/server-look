@@ -54,6 +54,10 @@ def apply_theme(root, name='深海蓝'):
     root._serverlook_theme = name
 
     options = getattr(root, '_serverlook_options', {})
+    scale = options.get('global_scale', 100) / 100
+    if not hasattr(root, '_serverlook_base_scaling'):
+        root._serverlook_base_scaling = float(root.tk.call('tk', 'scaling'))
+    root.tk.call('tk', 'scaling', root._serverlook_base_scaling * scale)
     FONT = ('Microsoft YaHei UI', options.get('font_size', 10))
     button_font = (FONT[0], options.get('button_font', 10))
     padding = {'紧凑': (9, 4), '标准': (12, 7), '宽松': (16, 10)}[options.get('button_size', '紧凑')]
@@ -190,3 +194,6 @@ def apply_theme(root, name='深海蓝'):
         for child in widget.winfo_children():
             recolor(child)
     recolor(root)
+
+    from server_look.ui.scaling import scale_layout
+    scale_layout(root, style, scale)

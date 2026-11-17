@@ -134,11 +134,13 @@ class ServerPage:
         self.npu = tk.Text(npu, font=('Consolas', 11), wrap='none', state='disabled')
         self.npu.pack(fill='both', expand=True)
         self.resources = ResourceViews(self)
+        from server_look.ui.command_panel import CommandPanel
+        self.commands = CommandPanel(self)
         self.view_choice = tk.StringVar(value=self.tabs.select())
         self.view_buttons = []
         group = ttk.Frame(self.toolbar)
         group.pack(side='right')
-        labels = ('运行任务', '容器', 'NPU / GPU', '硬件配置', '磁盘挂载', '文件浏览')
+        labels = ('运行任务', '容器', 'NPU / GPU', '硬件配置', '磁盘挂载', '文件浏览', '命令行控制')
         for tab, label in zip(self.tabs.tabs(), labels):
             widget = ttk.Radiobutton(group, text=label, value=tab, variable=self.view_choice,
                                      style='View.TRadiobutton', command=lambda tab=tab: self.tabs.select(tab))
@@ -160,7 +162,19 @@ class ServerPage:
         self.kill_button.pack(side='left', padx=8)
         self.stop_button = icon_button(controls, text='停止选中 Docker', command=lambda: self.act('stop'))
         self.stop_button.pack(side='left')
-        self.details = tk.Text(outer, height=3, wrap='word', font=('Microsoft YaHei UI', 10), state='disabled', pady=3)
+        extra = ttk.Frame(controls)
+        extra.pack(side='bottom', fill='x', pady=(5, 0), before=controls.winfo_children()[0])
+        self.provenance_button = icon_button(extra, text='读取来源详情', command=self.load_task_details)
+        self.provenance_button.pack(side='left')
+        self.kill_npu_button = icon_button(extra, text='结束全部 NPU 任务', style='Danger.TButton', command=self.kill_npu)
+        self.kill_npu_button.pack(side='left', padx=8)
+        self.task_provenance = {}
+        self.details_box = ttk.Frame(outer)
+        self.details = tk.Text(self.details_box, height=8, wrap='word', font=('Microsoft YaHei UI', 10), state='disabled', pady=3)
+        scroll = ttk.Scrollbar(self.details_box, command=self.details.yview)
+        scroll.pack(side='right', fill='y')
+        self.details.configure(yscrollcommand=scroll.set)
+        self.details.pack(fill='both', expand=True)
         self.tasks.bind('<<TreeviewSelect>>', self.select_task)
         self.containers.bind('<<TreeviewSelect>>', lambda event: self.show_details())
         self.tabs.bind('<<NotebookTabChanged>>', lambda event: self.show_details())
@@ -292,6 +306,8 @@ class ServerPage:
         self.connection_dialog.withdraw()
 
     def disconnect(self):
+        self.task_provenance.clear()
+        self.commands.disconnect()
         app = getattr(self.root.winfo_toplevel(), '_serverlook_app', None)
         if app:
             app.occupancy_marks.pop(str(self.root), None)
@@ -364,6 +380,9 @@ class ServerPage:
                                 self.refresh()
                     if action != 'snapshot':
                         messagebox.showerror('操作失败', error)
+                elif action == 'task_details':
+                    self.task_provenance[(result['pid'], result['ticks'])] = result
+                    self.show_details()
                 elif action == 'snapshot':
                     self.set_connection_state('连接成功')
                     self.save_connected_history()
@@ -373,6 +392,8 @@ class ServerPage:
                     self.render()
                 else:
                     self.status.set('操作完成：' + result['message'])
+                    if action == 'kill_npu':
+                        messagebox.showinfo('批量结束结果', result['message'], parent=self.root)
                     self.fresh = False
                     self.refresh()
                 self.buttons()
@@ -455,13 +476,17 @@ class ServerPage:
             item = find_task(self.data, self.identity)
             if item:
                 item = dict(item, docker=self.data.get('containers', {}).get(item['container']))
+                item['执行服务器'] = self.data.get('host') or getattr(self, 'connected_address', self.host.get())
+                item['来源详情（按需读取）'] = self.task_provenance.get(task_identity(item), '点击“读取来源详情”获取工作目录、脚本/数据路径线索和启动来源')
         if index < 2:
             self.controls.pack(side='bottom', fill='x', before=self.footer)
         if item:
             self.write(self.details, json.dumps(item, ensure_ascii=False, indent=2))
-            self.details.pack(side='bottom', fill='x', before=self.controls)
+            self.details.pack(fill='both', expand=True)
+            self.details_box.pack(side='bottom', fill='x', before=self.controls)
         else:
             self.details.pack_forget()
+            self.details_box.pack_forget()
         self.buttons()
 
     def buttons(self):
@@ -473,6 +498,29 @@ class ServerPage:
         self.parent_button.configure(state='normal' if task and task_tab else 'disabled')
         self.relations_button.configure(state='normal' if task and task_tab else 'disabled')
         self.stop_button.configure(state='normal' if enabled and self.tabs.index('current') == 1 and self.selected_container() else 'disabled')
+        self.provenance_button.configure(state='normal' if self.connection and not self.busy and task and task_tab else 'disabled')
+        self.kill_npu_button.configure(state='normal' if enabled and self.npu_targets() and self.tabs.index('current') == 0 else 'disabled')
+
+    def load_task_details(self):
+        task = find_task(self.data, self.identity)
+        if self.connection and not self.busy and task:
+            self.submit('task_details', pid=task['pid'], ticks=task['ticks'])
+
+    def npu_targets(self):
+        return [p for p in self.data.get('processes', {}).values()
+                if any(':' in device and device.split(':', 1)[0].isdigit() for device in p.get('npu', {}))]
+
+    def kill_npu(self):
+        if not self.connection or self.busy or not self.fresh or self.readonly.get():
+            return
+        targets = self.npu_targets()
+        if not targets:
+            return
+        lines = [f"PID {p['pid']} · {p['user']} · {p['command'][:160]}" for p in targets]
+        prompt = (f'服务器：{self.connected_address}\n\n确认强制结束全部 {len(targets)} 个 NPU 任务？\n'
+                  '未保存的数据会丢失；服务管理器可能自动重启服务。\n仅结束本次确认且执行时仍占用 NPU 的进程。\n\n' + '\n'.join(lines))
+        if messagebox.askyesno('确认结束全部 NPU 任务', prompt, default='no', icon='warning', parent=self.root):
+            self.submit('kill_npu', targets=[{'pid': p['pid'], 'ticks': p['ticks']} for p in targets])
 
     def relations(self):
         task = find_task(self.data, self.identity)
@@ -524,6 +572,7 @@ class ServerPage:
         if self.closed:
             return
         self.closed = True
+        self.commands.close()
         self.pending_history = None
         self.resources.local.cancel()
         if self.connection and hasattr(self.connection, 'close'):

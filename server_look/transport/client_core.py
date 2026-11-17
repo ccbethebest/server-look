@@ -63,6 +63,10 @@ elif action in ('term', 'kill'):
     if pid <= 1 or ticks <= 0:
         raise ValueError('Invalid process identity')
     print(json.dumps({'message': monitor.signal_tree({'pid': pid, 'ticks': ticks}, signal.SIGTERM if action == 'term' else signal.SIGKILL)}))
+elif action == 'kill_npu':
+    print(json.dumps(monitor.kill_npu_tasks(request['targets'])))
+elif action == 'task_details':
+    print(json.dumps(monitor.task_details(int(request['pid']), int(request['ticks']))))
 elif action == 'stop':
     import re
     cid = request['cid']

@@ -39,7 +39,10 @@ def update_icon(button, color):
     navigation = getattr(button, '_serverlook_nav', False)
     if navigation:
         color = {'mapping': '#ec7970', 'server': '#2aafff', 'settings': '#a681ed', 'search': '#27ba94', 'help': '#e5a532'}[button._serverlook_icon]
-    image = tk.PhotoImage(master=button, width=20, height=18)
+    size = getattr(button.winfo_toplevel(), '_serverlook_options', {}).get('button_size', '紧凑')
+    factor = getattr(button.winfo_toplevel(), '_serverlook_options', {}).get('global_scale', 100) / 100
+    factor *= 2 if navigation else (4 / 3 if size == '宽松' else 1)
+    image = tk.PhotoImage(master=button, width=round(20 * factor), height=round(18 * factor))
     for points in SHAPES[button._serverlook_icon]:
         for start, end in zip(points, points[1:] or points):
             x1, y1 = start
@@ -48,12 +51,8 @@ def update_icon(button, color):
             for step in range(steps + 1):
                 x = round(x1 + (x2 - x1) * step / steps)
                 y = round(y1 + (y2 - y1) * step / steps)
-                image.put(color, to=(x, y, x + 2, y + 1))
-    size = getattr(button.winfo_toplevel(), '_serverlook_options', {}).get('button_size', '紧凑')
-    if navigation:
-        image = image.zoom(2, 2)
-    elif size == '宽松':
-        image = image.zoom(4, 4).subsample(3, 3)
+                left, top = round(x * factor), round(y * factor)
+                image.put(color, to=(left, top, max(left + 1, round((x + 2) * factor)), max(top + 1, round((y + 1) * factor))))
     button._serverlook_image = image
     button.configure(image=image, compound='left')
 

@@ -293,3 +293,7 @@ ENGLISH = {
     '连接成功，但保存历史失败。请检查用户配置目录权限及 Windows 密码加密服务。': 'Connected, but history could not be saved. Check settings folder permissions and Windows password encryption.',
     '暂无历史服务器，请先连接并保存服务器。': 'No recent servers. Connect and save a server first.',
 }
+
+ENGLISH.update({'命令行控制': 'Command line', '新建命令行': 'New terminal', '新建 Python': 'New Python', '关闭当前会话': 'Close session', '密钥检测': 'Detect keys', '密钥生成': 'Generate key', '公钥配置': 'Install public key', '全局大小修正（%）': 'Global UI scale (%)', '执行代码': 'Run code', 'Python 多行代码（Ctrl+Enter 执行，变量保留）': 'Python code (Ctrl+Enter to run; variables persist)', '连接服务器后可新建多个命令行或 Python 会话': 'Connect to open terminal or Python sessions', '正在打开会话…': 'Opening session…', '会话已连接 · Ctrl+C 中断 · Ctrl+Shift+C/V 复制粘贴': 'Connected · Ctrl+C interrupt · Ctrl+Shift+C/V copy/paste', '会话已结束': 'Session ended', 'SSH 密钥': 'SSH keys', '正在处理密钥…': 'Processing keys…', '本机未检测到完整 SSH 密钥对': 'No complete local SSH key pair found', '请先点击密钥生成': 'Generate a key first', '粘贴多行命令': 'Paste multiple commands', '剪贴板包含多行，粘贴后可能立即执行。是否继续？': 'Multiple lines may execute immediately. Continue?', '输入队列已满，请稍后重试': 'Input queue is full; try again shortly'})
+
+ENGLISH.update({'读取来源详情': 'Read task provenance', '结束全部 NPU 任务': 'End all NPU tasks', '执行服务器': 'Execution server', '来源详情（按需读取）': 'Task provenance (on demand)'})

@@ -10,10 +10,12 @@ FILE_ACTIONS = {'新建文件夹': 'mkdir', '拷贝文件': 'copy', '粘贴文�
 SHORTCUTS.update(dict(zip(FILE_ACTIONS, ('<Control-Shift-N>', '<Control-c>', '<Control-v>', '<Delete>', '<F2>', '无', '无'))))
 KEY_CHOICES = ('无', '<Control-n>', '<Control-Return>', '<F5>', '<Control-d>', '<Control-f>', '<Control-comma>', '<F1>', '<F3>', '<F4>', '<F6>', '<F7>', '<F8>', '<F9>', '<F10>', '<Control-g>', '<Control-h>', '<Control-j>', '<Control-k>', '<Control-l>', '<Control-r>', '<Control-s>')
 KEY_CHOICES = tuple(dict.fromkeys((*KEY_CHOICES, *SHORTCUTS.values())))
-DEFAULTS = {'language': 'zh_CN', 'readonly': False, 'font_size': 10, 'button_font': 10, 'button_size': '紧凑', 'navigation': '顶部横排', 'window': '普通窗口', 'shortcuts': SHORTCUTS}
+DEFAULTS = {'global_scale': 100, 'language': 'zh_CN', 'readonly': False, 'font_size': 10, 'button_font': 10, 'button_size': '紧凑', 'navigation': '顶部横排', 'window': '普通窗口', 'shortcuts': SHORTCUTS}
 
 def validate(values):
     result = dict(DEFAULTS, **values)
+    if type(result['global_scale']) is not int or not 50 <= result['global_scale'] <= 200:
+        raise ValueError('全局大小修正必须为 50–200%')
     for key in ('font_size', 'button_font'):
         if type(result[key]) is not int or not 8 <= result[key] <= 18:
             raise ValueError('字号必须为 8–18')

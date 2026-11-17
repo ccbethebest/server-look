@@ -203,6 +203,8 @@ class MultiServerApp:
 
     def configure_page(self, page):
         page.readonly.set(self.preferences['readonly'])
+        if page.readonly.get():
+            page.commands.disconnect()
         page.readonly_label.configure(text='远程只读' if page.readonly.get() else '远程可写')
         page.resources.local.configure_shortcuts(self.preferences['shortcuts'])
         page.buttons()
