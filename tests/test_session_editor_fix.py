@@ -54,6 +54,44 @@ class SessionEditorFixTests(TerminalRecoveryTests):
         self.assertTrue(sent.startswith('\x05\x15unalias vi vim'))
         self.assertTrue(sent.endswith('; vim notes.txt\r'))
 
+    def test_container_prompt_with_application_cursor_still_opens_editor(self):
+        self.item['ready'] = True
+        self.item['stream'].feed('\x1b[?1h(base) [root@container ~]# ')
+        for char in 'vim /tmp/container.txt':
+            self.panel.keypress(SimpleNamespace(keysym=char, char=char, state=0), self.item)
+            self.item['stream'].feed(char)
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        sent = self.item['session'].send.call_args.args[0]
+        self.assertTrue(sent.startswith('\x05\x15unalias vi vim'), repr(sent))
+        self.assertTrue(sent.endswith('; vim /tmp/container.txt\r'))
+        self.panel.page.resources = MagicMock()
+        context = dict(boot='boot-fixture', namespace='mnt:[42]', uid='0', gid='0')
+        request = self.item['editor_bridge'].prefix + '!boot-fixture|mnt:[42]|0|0|/tmp/container.txt\x07'
+        self.item['session'].events.put(('data', request))
+        self.poll()
+        self.panel.page.resources.editors.open.assert_called_once_with(
+            '/tmp/container.txt', remote=True, context=context)
+
+    def test_python_at_application_cursor_prompt_also_restores_bridge(self):
+        self.item['ready'] = True
+        self.item['stream'].feed('\x1b[?1hroot@container:~# ')
+        for char in 'python3':
+            self.panel.keypress(SimpleNamespace(keysym=char, char=char, state=0), self.item)
+            self.item['stream'].feed(char)
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        sent = self.item['session'].send.call_args.args[0]
+        self.assertTrue(sent.startswith('\x05\x15unalias vi vim'), repr(sent))
+        self.assertTrue(sent.endswith('; python3\r'))
+
+    def test_fullscreen_editor_keeps_return_and_does_not_inject_shell_code(self):
+        self.item['ready'] = True
+        self.item['stream'].feed('\x1b[?1049h\x1b[?1h')
+        for char in 'vim /tmp/container.txt':
+            self.panel.keypress(SimpleNamespace(keysym=char, char=char, state=0), self.item)
+            self.item['stream'].feed(char)
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        self.item['session'].send.assert_called_with('\r')
+
     def test_recovery_uses_current_directory_and_overrides_broken_function(self):
         bash = Path('C:/Program Files/Git/bin/bash.exe')
         shell = str(bash) if bash.exists() else '/bin/bash'

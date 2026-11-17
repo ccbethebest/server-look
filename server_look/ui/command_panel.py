@@ -188,8 +188,10 @@ class CommandPanel:
         if item['output'].tag_ranges('sel') and event.keysym in ('BackSpace', 'Delete'):
             return self.delete_selection(item)
         text = encode_key(event.keysym, event.char, event.state, (1 << 5) in item['screen'].mode)
+        # Readline also enables application cursor keys at a normal shell prompt.
+        # Only the alternate screen indicates a fullscreen editor here.
         if (text == '\r' and item.get('shell_line') is not None
-                and (1 << 5) not in item['screen'].mode):
+                and item['screen']._primary is None):
             line = item['shell_line']
             if line.matches(item['screen']):
                 command = editor_command(line.text, item['editor_bridge'].token)
