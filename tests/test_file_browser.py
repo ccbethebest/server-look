@@ -9,9 +9,11 @@ class TransferProgressTests(unittest.TestCase):
         updates = []
         transfer = Transfer(progress=updates.append)
         transfer.run_connection = Mock()
-        transfer.run_many_connection(Mock(), 'upload', ['a', 'b'], '/target')
-        self.assertEqual([u['completed'] for u in updates], [0, 1, 1, 2])
+        transfer.run_many_connection(Mock(session=None), 'upload', ['a', 'b'], '/target')
+        self.assertEqual([u['completed'] for u in updates], [0, 0, 1, 1, 2])
         self.assertTrue(all(u['total'] == 2 for u in updates))
+        self.assertTrue(all(u['bytes_total'] is None for u in updates))
+        self.assertEqual(updates[-1]['phase'], 'transferring')
 
 class ExplorerTests(unittest.TestCase):
     def setUp(self):

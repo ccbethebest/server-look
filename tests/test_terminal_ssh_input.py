@@ -47,6 +47,10 @@ class SSHKeyboardIntegrationTests(unittest.TestCase):
                         if byte == 3:
                             line = b''
                             channel.sendall(b'^C\r\n(root@test)# ')
+                        elif byte == 127:
+                            if line:
+                                line = line[:-1]
+                                channel.sendall(b'\b \b')
                         elif byte in (10, 13):
                             if line == b'pwd':
                                 channel.sendall(b'\r\n/test/home\r\n(root@test)# ')
@@ -99,12 +103,25 @@ class SSHKeyboardIntegrationTests(unittest.TestCase):
                                     state=8 if sys.platform == 'win32' else 0)
                 root.update()
             wait_for(lambda: '/test/home' in item['output'].get('1.0', 'end'))
+            # Delete a selected suffix through the actual SSH channel, then execute.
+            for key in 'pwdjunk':
+                root.event_generate('<KeyPress-' + key + '>')
+                root.update()
+            wait_for(lambda: 'pwdjunk' in item['output'].get('1.0', 'end'))
+            output = item['output']
+            start = output.search('junk', '1.0', 'end')
+            self.assertTrue(start)
+            output.tag_add('sel', start, start + '+4c')
+            root.event_generate('<KeyPress-Delete>')
+            wait_for(lambda: 'pwdjunk' not in output.get('1.0', 'end'))
+            root.event_generate('<KeyPress-Return>')
+            wait_for(lambda: output.get('1.0', 'end').count('/test/home') == 2)
             item['command_entry'].focus_set()
             root.update()
             for key in ('p', 'w', 'd', 'Return'):
                 root.event_generate('<KeyPress-' + key + '>')
                 root.update()
-            wait_for(lambda: item['output'].get('1.0', 'end').count('/test/home') == 2)
+            wait_for(lambda: item['output'].get('1.0', 'end').count('/test/home') == 3)
             session = item['session']
             panel.close_current()
             session.thread.join(2)

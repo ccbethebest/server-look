@@ -9,6 +9,7 @@ from server_look.localization.localized_ui import ttk, StringVar, messagebox, si
 from server_look.ui.ui_icons import button as icon_button, file_navigation
 
 from server_look.files.file_transfer import Transfer, open_local_folder
+from server_look.files.transfer_progress import update_progress
 from server_look.ui.table_sort import enable_sort
 
 
@@ -61,6 +62,10 @@ class LocalFiles:
         ttk.Label(footer, textvariable=self.status).pack(side='left', fill='x', expand=True)
         self.progress = ttk.Progressbar(frame, mode='indeterminate')
         self.progress.pack(fill='x')
+        self.progress_text = StringVar(value='')
+        progress_label = ttk.Label(frame, textvariable=self.progress_text, wraplength=400)
+        progress_label.pack(fill='x', pady=(2, 0))
+        progress_label.bind('<Configure>', lambda event: progress_label.configure(wraplength=max(100, event.width)))
         self.items = {}
         self.browse()
         from server_look.files.file_drag import RemoteDrag
@@ -329,9 +334,12 @@ class LocalFiles:
         self.started = time.monotonic()
         self.elapsed.set('耗时 00:00')
         self.operation_title = title
+        self.transfer_detail = None
+        self.progress_text.set('正在统计总大小…' if self.transfer else '')
         if self.transfer:
             self.transfer.progress = lambda update: self.events.put(('progress', generation, update))
         self.status.set(title + '进行中…')
+        self.progress.configure(mode='indeterminate', value=0)
         self.progress.start()
         def run():
             result = None
@@ -353,10 +361,9 @@ class LocalFiles:
                 if event[0] == 'progress':
                     if event[1] == self.page.generation:
                         update = event[2]
-                        detail = str(update['completed']) + '/' + str(update['total'])
-                        if update.get('bytes_total'):
-                            detail += f" · {update['bytes_done'] / update['bytes_total']:.0%}"
-                        self.status.set(self.operation_title + ' · ' + detail)
+                        self.transfer_detail = update_progress(self.progress, update)
+                        self.progress_text.set(self.transfer_detail)
+                        self.status.set(self.operation_title + '进行中…')
                     continue
                 generation, error = event[:2]
                 detail = event[2] if len(event) > 2 else None
@@ -367,7 +374,8 @@ class LocalFiles:
                     seconds = int(time.monotonic() - self.started)
                     self.elapsed.set(f'耗时 {seconds // 60:02d}:{seconds % 60:02d}')
                 if generation == self.page.generation:
-                    self.status.set('操作失败：' + error if error else detail or '操作完成')
+                    self.status.set('操作失败：' + error if error else detail or
+                                    '操作完成' + (' · ' + self.transfer_detail if self.transfer_detail else ''))
                     self.browse()
                     self.resources.cache.clear()
                     self.resources.browse(self.resources.current or '/', force=True)

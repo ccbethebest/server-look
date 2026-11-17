@@ -7,6 +7,7 @@ from server_look.localization.localized_ui import tk
 from server_look.localization.localized_ui import ttk, messagebox
 
 from server_look.files.file_transfer import Transfer, local_name
+from server_look.files.transfer_progress import update_progress
 
 
 class RemoteDrag:
@@ -215,11 +216,15 @@ class RemoteDrag:
         window = tk.Toplevel(local.page.root)
         window.title('正在下载拖拽文件')
         window.transient(local.page.root)
-        window.geometry('510x165')
+        window.geometry('650x210')
         ttk.Label(window, text=f'正在下载 {len(entries)} 项到临时目录…\n完成后可拖到 Windows 资源管理器。\n若等待时已松开鼠标，请完成后再次拖动。', padding=16).pack(fill='x')
         progress = ttk.Progressbar(window, mode='indeterminate')
         progress.pack(fill='x', padx=16)
         progress.start()
+        updates = queue.Queue()
+        transfer.progress = updates.put
+        status = tk.StringVar(window, value='正在统计总大小…')
+        ttk.Label(window, textvariable=status, padding=(16, 6)).pack(fill='x')
         ttk.Button(window, text='取消', command=transfer.cancel).pack(pady=10)
         window.protocol('WM_DELETE_WINDOW', transfer.cancel)
         local.status.set('首次拖拽：正在下载文件，可在弹窗中取消')
@@ -239,6 +244,12 @@ class RemoteDrag:
             if not window.winfo_exists():
                 transfer.cancel()
                 return
+            latest = None
+            while not updates.empty():
+                latest = updates.get_nowait()
+            if latest is not None:
+                status.set(update_progress(progress, latest))
+                local.status.set(status.get())
             try:
                 error = result.get_nowait()
             except queue.Empty:

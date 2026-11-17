@@ -1,3 +1,12 @@
+## 2.18.6 传输进度与右键操作 / Transfer progress and text actions
+
+- 上传、下载、本地复制及拖拽传输先统计整批大小，显示“已传输 / 总计 / 百分比”和完成项数；文件夹包含子目录，多文件不再重置百分比。统计期间显示提示，仍可取消。仅旧版 OpenSSH 回退通道不提供实时字节数，会明确说明。
+- Shell 无选区时单击右键直接粘贴；有选区时显示“复制 / 粘贴 / 删除选中文字”。Ctrl+C/V 继续可用；无选区的 Ctrl+C 仍中断远端命令。
+- 终端当前新输入、尚未执行且没有换行的单行命令，可选中文字后按 Delete/Backspace 或右键删除，删除同步到远端。提示符和历史输出仅可复制；历史召回、自动补全后的未确认内容、全屏程序和跨行选区不开放选区删除。独立命令输入栏与 Python 多行编辑框支持右键复制、粘贴和删除。
+- Batch transfers show cumulative bytes, total size and percentage. Right click pastes when no text is selected, otherwise opens a text menu. Selected deletion is sent to the remote shell only for verified, newly typed single-line input; output and prompts remain copyable. Command entries and Python editors support native local text actions.
+
+- Verification: recursive SFTP upload/download and local-copy byte accounting, empty files, Tk clipboard/menu and selected deletion, read-only/history guards, Num Lock keyboard regressions and selected suffix deletion over a real local encrypted SSH channel. No target-server validation claim.
+
 ## 2.18.5 Windows 终端直接输入修复 / Direct terminal typing
 
 - 修复 Num Lock 开启时普通字符被误当成 Alt 快捷键的问题；Windows 使用 Tk 原生 Alt 掩码，Num Lock 不再改变字符、回车、方向键和功能键。

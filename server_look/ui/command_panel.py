@@ -3,10 +3,12 @@ import queue
 import threading
 import secrets
 from tkinter import font as tkfont
-from server_look.localization.localized_ui import tk, ttk, messagebox
+from server_look.localization.localized_ui import tk, ttk, messagebox, Menu
 from server_look.transport.terminal import TerminalSession, python_command
 from server_look.transport.terminal_editor import EditorBridge, editor_setup
 from server_look.transport.terminal_input import encode_key
+from server_look.transport.terminal_selection import ShellLine
+from server_look.ui.text_actions import bind_text_menu, has_selection
 from server_look.transport.ssh_keys import detect_keys, ensure_key, configure_key, check_key
 
 
@@ -81,14 +83,15 @@ class CommandPanel:
                 'session': session, 'ready': False, 'ended': False,
                 'editor_bridge': None if python else EditorBridge(secrets.token_hex(16)),
                 'connection': self.page.connection, 'generation': self.page.generation,
-                'input_status': input_status}
+                'input_status': input_status, 'shell_line': None if python else ShellLine()}
         # pyte answers terminal status queries through the same SSH input queue.
         screen.write_process_input = session.send
         self.sessions[str(frame)] = item
         if not python:
             item['command_entry'] = command_entry
             command_entry.bind('<Return>', lambda event: self.execute_command(item))
-            command_entry.bind('<Control-c>', lambda event: self.send(item, '\x03'))
+            command_entry.bind('<Control-c>', lambda event: None if has_selection(command_entry) else self.send(item, '\x03'))
+            bind_text_menu(command_entry)
             ttk.Button(command_bar, text='执行', command=lambda: self.execute_command(item)).pack(side='left', padx=4)
             ttk.Button(command_bar, text='中断 Ctrl+C', command=lambda: self.send(item, '\x03')).pack(side='left')
             ttk.Button(command_bar, text='恢复显示 Ctrl+Q', command=lambda: self.send(item, '\x11')).pack(side='left', padx=4)
@@ -96,6 +99,11 @@ class CommandPanel:
         output.bind('<<Paste>>', lambda event: self.paste(item))
         output.bind('<Control-Shift-C>', lambda event: self.copy(item))
         output.bind('<Control-Shift-V>', lambda event: self.paste(item))
+        menu = item['text_menu'] = Menu(output, tearoff=False)
+        menu.add_command(label='复制', command=lambda: self.copy(item))
+        menu.add_command(label='粘贴', command=lambda: self.paste(item))
+        menu.add_command(label='删除选中文字', command=lambda: self.delete_selection(item))
+        output.bind('<Button-3>', lambda event: self.right_click(event, item))
         ttk.Button(input_bar, text='启用终端输入',
                    command=lambda: self.activate_terminal(item)).pack(side='right', padx=4)
         output.bind('<Button-1>', lambda event: self.activate_terminal(item))
@@ -112,6 +120,7 @@ class CommandPanel:
             item['editor'] = editor
             ttk.Button(editor_bar, text='执行代码', command=lambda: self.execute_cell(item)).pack(side='right')
             editor.bind('<Control-Return>', lambda event: self.execute_cell(item))
+            bind_text_menu(editor)
         self.notice.set('正在打开会话…')
         app = getattr(self.page.root.winfo_toplevel(), '_serverlook_app', None)
         if app:
@@ -140,7 +149,7 @@ class CommandPanel:
         self.transmit(item, text)
         return 'break'
 
-    def transmit(self, item, text):
+    def transmit(self, item, text, track=True):
         if item['ended']:
             self.notice.set('会话已结束，请新建会话')
         elif not item['ready']:
@@ -150,6 +159,8 @@ class CommandPanel:
         else:
             try:
                 item['session'].send(text)
+                if track and item.get('shell_line') is not None:
+                    item['shell_line'].record(item['screen'], text)
                 return True
             except queue.Full:
                 self.notice.set('输入队列已满，请稍后重试')
@@ -167,9 +178,49 @@ class CommandPanel:
                 return self.paste(item)
             if event.keysym.lower() == 'c' and item['output'].tag_ranges('sel'):
                 return self.copy(item)
+        if item['output'].tag_ranges('sel') and event.keysym in ('BackSpace', 'Delete'):
+            return self.delete_selection(item)
         text = encode_key(event.keysym, event.char, event.state, (1 << 5) in item['screen'].mode)
         if text:
             self.send(item, text)
+        return 'break'
+
+    def right_click(self, event, item):
+        self.activate_terminal(item)
+        if not item['output'].tag_ranges('sel'):
+            return self.paste(item)
+        item['text_menu'].entryconfigure(2, state='normal' if self.selected_deletion(item) else 'disabled')
+        try:
+            item['text_menu'].tk_popup(event.x_root, event.y_root)
+        finally:
+            item['text_menu'].grab_release()
+        return 'break'
+
+    def selected_deletion(self, item):
+        line, output = item['shell_line'], item['output']
+        if line is None or not output.tag_ranges('sel') or (1 << 5) in item['screen'].mode:
+            return None
+        row = len(item['screen'].history.top) + item['screen'].cursor.y + 1
+        first, last = output.index('sel.first'), output.index('sel.last')
+        if int(first.split('.')[0]) != row or int(last.split('.')[0]) != row:
+            return None
+        if output.get(f'{row}.0', f'{row}.end').rstrip() != item['screen'].display[item['screen'].cursor.y].rstrip():
+            return None
+        start = len(output.get(f'{row}.0', first))
+        end = len(output.get(f'{row}.0', last))
+        return line.deletion(item['screen'], start, end)
+
+    def delete_selection(self, item):
+        deletion = self.selected_deletion(item)
+        if deletion is None:
+            self.notice.set('仅可删除本次输入且尚未执行的单行命令文字；历史输出可复制')
+            return 'break'
+        text, start, end = deletion
+        # Preserve tracked state while the remote readline processes cursor keys.
+        line = item['shell_line']
+        if self.transmit(item, text, track=False):
+            line.deleted(start, end)
+            item['output'].tag_remove('sel', '1.0', 'end')
         return 'break'
 
     def copy(self, item):
