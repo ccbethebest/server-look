@@ -1,3 +1,10 @@
+## 2.18.5 Windows 终端直接输入修复 / Direct terminal typing
+
+- 修复 Num Lock 开启时普通字符被误当成 Alt 快捷键的问题；Windows 使用 Tk 原生 Alt 掩码，Num Lock 不再改变字符、回车、方向键和功能键。
+- 新建会话在终端显示后获取输入焦点；点击终端或“启用终端输入”可切回直接输入，并显示键盘焦点状态。后台会话不会抢占当前输入。
+- 命令行页面继续暂停监控自动刷新，SSH 输出按实际收到的数据更新。
+- Fixed Windows Num Lock being mistaken for Alt. Shell and Python terminals preserve plain typing and navigation with Num Lock enabled. A focus indicator and explicit activation button make direct input visible and recoverable.
+
 ## 2.18.4 命令输入与刷新 / Command input and refresh
 
 进入“命令行控制”后，监控数据不再每 3 秒自动刷新；切回其他功能页面后恢复。SSH 命令输出仍实时显示，也可手动点上方“刷新”。
@@ -15,7 +22,7 @@ Automatic monitoring pauses on the command page and resumes on other pages; SSH 
 - 补齐应用方向键、F1–F12、修饰键、括号粘贴、备用屏幕恢复与中文光标位置。类似兼容性问题后续优先复用合适的图形窗口；当前并未自动重写其他终端程序。
 - In a new POSIX SSH shell with python3, `vim FILE` / `vi FILE` opens the existing graphical editor relative to the shell's current directory. Ctrl+S saves, Ctrl+Z undoes, and closing unsaved edits asks Save/Discard/Cancel. No Vim process starts; the prompt returns immediately. `command vim FILE` runs native Vim. Options, multiple files, sudo, containers, nested SSH and Python sessions retain normal execution. vi/vim aliases are replaced only in this shell session; persistent profiles remain unchanged. Existing text files only, up to 4 MiB, with the editor's existing permission, conflict and encoding checks. Application keys, function keys, bracketed paste, alternate-screen restoration and wide-character cursor positions have regression coverage; this does not assert full Xshell parity or target-server verification.
 
-服务器看看 2.18.4 使用说明
+服务器看看 2.18.5 使用说明
 
 2.18.2：连接、刷新、断开旁新增“关闭”，关闭当前服务器页；未保存编辑内容时仍询问保存/放弃/取消。命令行支持私有光标位置查询，并隔离单个会话的显示错误。
 

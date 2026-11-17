@@ -59,6 +59,10 @@ class CommandPanel:
         frame = ttk.Frame(self.tabs)
         self.tabs.add(frame, text=f'{"Python" if python else "Shell"} {self.serial}')
         self.tabs.select(frame)
+        input_bar = ttk.Frame(frame)
+        input_bar.pack(side='bottom', fill='x')
+        input_status = tk.StringVar(value='键盘输入：点击终端启用')
+        ttk.Label(input_bar, textvariable=input_status).pack(side='left', padx=4)
         output = tk.Text(frame, wrap='none', height=24, font=('Consolas', 10), undo=False)
         scroll = ttk.Scrollbar(frame, command=output.yview)
         scroll.pack(side='right', fill='y')
@@ -76,7 +80,8 @@ class CommandPanel:
         item = {'frame': frame, 'output': output, 'screen': screen, 'stream': stream,
                 'session': session, 'ready': False, 'ended': False,
                 'editor_bridge': None if python else EditorBridge(secrets.token_hex(16)),
-                'connection': self.page.connection, 'generation': self.page.generation}
+                'connection': self.page.connection, 'generation': self.page.generation,
+                'input_status': input_status}
         # pyte answers terminal status queries through the same SSH input queue.
         screen.write_process_input = session.send
         self.sessions[str(frame)] = item
@@ -91,7 +96,12 @@ class CommandPanel:
         output.bind('<<Paste>>', lambda event: self.paste(item))
         output.bind('<Control-Shift-C>', lambda event: self.copy(item))
         output.bind('<Control-Shift-V>', lambda event: self.paste(item))
-        output.bind('<Button-1>', lambda event: output.focus_set())
+        ttk.Button(input_bar, text='启用终端输入',
+                   command=lambda: self.activate_terminal(item)).pack(side='right', padx=4)
+        output.bind('<Button-1>', lambda event: self.activate_terminal(item))
+        output.bind('<FocusIn>', lambda event: input_status.set('键盘输入已启用'))
+        output.bind('<FocusOut>', lambda event: input_status.set('键盘输入：点击终端启用'))
+        output.bind('<Map>', lambda event: self.activate_terminal(item, force=False))
         output.bind('<Configure>', lambda event: self.resize(item))
         if python:
             editor_bar = ttk.Frame(frame)
@@ -106,7 +116,25 @@ class CommandPanel:
         app = getattr(self.page.root.winfo_toplevel(), '_serverlook_app', None)
         if app:
             app.retheme()
-        output.focus_set()
+
+    def activate_terminal(self, item, force=True):
+        # A Text created inside a notebook may not be mapped until idle. Only
+        # an explicit click/button may activate the OS window; never a timer.
+        output = item['output']
+        if (self.closed or not output.winfo_exists() or not output.winfo_ismapped()
+                or self.tabs.select() != str(item['frame'])
+                or self.page.tabs.select() != str(self.frame)):
+            return
+        if not force and output.focus_get() not in (None, self.page.root.winfo_toplevel()):
+            # Do not steal input from an entry or another dialog. A new session
+            # can take focus from controls in this command workspace.
+            focus = output.focus_get()
+            if not str(focus).startswith(str(self.frame) + '.'):
+                return
+        if force:
+            output.focus_force()
+        else:
+            output.focus_set()
 
     def send(self, item, text):
         self.transmit(item, text)

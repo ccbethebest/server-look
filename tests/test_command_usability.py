@@ -1,5 +1,6 @@
 """Mapped Tk keyboard delivery and command-page refresh policy."""
 import queue
+import sys
 import tkinter as tk
 from tkinter import ttk
 from types import SimpleNamespace
@@ -45,6 +46,57 @@ class CommandUsabilityTests(unittest.TestCase):
             self.root.update()
         self.assertEqual([c.args[0] for c in self.item['session'].send.call_args_list],
                          ['a', '\r', '\x03'])
+
+    @unittest.skipUnless(sys.platform == 'win32', 'Windows native keyboard state')
+    def test_native_char_messages_with_num_lock_send_plain_command(self):
+        import ctypes
+        user = ctypes.windll.user32
+        saved = (ctypes.c_ubyte * 256)()
+        self.assertTrue(user.GetKeyboardState(saved))
+        locked = (ctypes.c_ubyte * 256)()
+        locked[0x90] = 1  # VK_NUMLOCK toggled on, with no modifiers held.
+        self.panel.activate_terminal(self.item)
+        self.root.update()
+        try:
+            self.assertTrue(user.SetKeyboardState(locked))
+            for char in 'pwd\r':
+                self.assertTrue(user.PostMessageW(self.item['output'].winfo_id(),
+                                                 0x0102, ord(char), 1))
+                self.root.update()
+        finally:
+            user.SetKeyboardState(saved)
+        self.assertEqual([c.args[0] for c in self.item['session'].send.call_args_list],
+                         ['p', 'w', 'd', '\r'])
+
+    def test_explicit_activation_recovers_focus_and_sends_to_current_session(self):
+        self.item['command_entry'].focus_set()
+        self.root.update()
+        self.panel.activate_terminal(self.item)
+        self.root.update()
+        self.assertIs(self.root.focus_get(), self.item['output'])
+        self.assertIn('已启用', self.item['input_status'].get())
+        self.root.event_generate('<KeyPress-p>')
+        self.root.update()
+        self.item['session'].send.assert_called_once_with('p')
+
+    def test_new_session_focus_is_applied_after_widget_is_mapped(self):
+        self.item['command_entry'].focus_set()
+        self.root.update()
+        self.panel.new_shell()
+        new_item = list(self.panel.sessions.values())[-1]
+        self.root.update()
+        self.assertIs(self.root.focus_get(), new_item['output'])
+        self.assertIn('已启用', new_item['input_status'].get())
+
+    def test_background_tab_never_takes_focus(self):
+        self.panel.new_shell()
+        newer = list(self.panel.sessions.values())[-1]
+        self.root.update()
+        newer['command_entry'].focus_set()
+        self.root.update()
+        self.panel.activate_terminal(self.item)
+        self.root.update()
+        self.assertIs(self.root.focus_get(), newer['command_entry'])
 
     def test_command_entry_displays_input_and_return_sends_once(self):
         entry = self.item['command_entry']

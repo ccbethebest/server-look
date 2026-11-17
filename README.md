@@ -1,3 +1,10 @@
+## 2.18.5 Windows 终端直接输入修复 / Direct terminal typing
+
+- 修复 Num Lock 开启时普通字符被误当成 Alt 快捷键的问题；Windows 使用 Tk 原生 Alt 掩码，Num Lock 不再改变字符、回车、方向键和功能键。
+- 新建会话在终端显示后获取输入焦点；点击终端或“启用终端输入”可切回直接输入，并显示键盘焦点状态。后台会话不会抢占当前输入。
+- 命令行页面继续暂停监控自动刷新，SSH 输出按实际收到的数据更新。
+- Fixed Windows Num Lock being mistaken for Alt. Shell and Python terminals preserve plain typing and navigation with Num Lock enabled. A focus indicator and explicit activation button make direct input visible and recoverable.
+
 ## 2.18.4 命令输入与刷新 / Command input and refresh
 
 - 命令行控制页面暂停每 3 秒的监控数据自动刷新；切回其他页面后恢复。SSH 输出继续实时接收，上方“刷新”仍可手动使用。

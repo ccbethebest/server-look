@@ -1,6 +1,11 @@
 """Xterm keyboard sequences for the embedded SSH terminal."""
+import sys
+
+
 def encode_key(key, char='', state=0, application_cursor=False):
-    modifier = 1 + bool(state & 1) + 2 * bool(state & 8) + 4 * bool(state & 4)
+    # Tk/Windows uses Mod1 (8) for Num Lock, and 0x20000 for Alt.
+    alt = bool(state & (0x20000 if sys.platform == 'win32' else 8))
+    modifier = 1 + bool(state & 1) + 2 * alt + 4 * bool(state & 4)
     cursor = {'Up': 'A', 'Down': 'B', 'Right': 'C', 'Left': 'D', 'Home': 'H', 'End': 'F'}
     if key in cursor:
         final = cursor[key]
@@ -19,4 +24,4 @@ def encode_key(key, char='', state=0, application_cursor=False):
     if state & 4 and len(key) == 1 and 'a' <= key.lower() <= 'z':
         return chr(ord(key.lower()) - 96)
     value = {'Return': '\r', 'BackSpace': '\x7f', 'Tab': '\t', 'Escape': '\x1b'}.get(key, char)
-    return ('\x1b' if state & 8 and value else '') + value
+    return ('\x1b' if alt and value else '') + value

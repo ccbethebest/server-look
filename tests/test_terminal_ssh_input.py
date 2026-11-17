@@ -1,5 +1,6 @@
 """Real encrypted SSH channel + mapped Tk key events, using a local test shell."""
 import socket
+import sys
 import threading
 import time
 import tkinter as tk
@@ -92,12 +93,18 @@ class SSHKeyboardIntegrationTests(unittest.TestCase):
             wait_for(lambda: 'Z' in item['output'].get('1.0', 'end'))
             root.event_generate('<Control-KeyPress-c>')
             wait_for(lambda: '^C' in item['output'].get('1.0', 'end'))
+            # Num Lock must not turn plain terminal typing into Alt shortcuts.
+            for key in ('p', 'w', 'd', 'Return'):
+                root.event_generate('<KeyPress-' + key + '>',
+                                    state=8 if sys.platform == 'win32' else 0)
+                root.update()
+            wait_for(lambda: '/test/home' in item['output'].get('1.0', 'end'))
             item['command_entry'].focus_set()
             root.update()
             for key in ('p', 'w', 'd', 'Return'):
                 root.event_generate('<KeyPress-' + key + '>')
                 root.update()
-            wait_for(lambda: '/test/home' in item['output'].get('1.0', 'end'))
+            wait_for(lambda: item['output'].get('1.0', 'end').count('/test/home') == 2)
             session = item['session']
             panel.close_current()
             session.thread.join(2)

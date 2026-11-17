@@ -1,3 +1,13 @@
+## 2.18.5 Windows 终端直接输入修复 / Direct terminal typing
+
+- 修复 Num Lock 开启时普通字符被误当成 Alt 快捷键的问题；Windows 使用 Tk 原生 Alt 掩码，Num Lock 不再改变字符、回车、方向键和功能键。
+- 新建会话在终端显示后获取输入焦点；点击终端或“启用终端输入”可切回直接输入，并显示键盘焦点状态。后台会话不会抢占当前输入。
+- 命令行页面继续暂停监控自动刷新，SSH 输出按实际收到的数据更新。
+- Fixed Windows Num Lock being mistaken for Alt. Shell and Python terminals preserve plain typing and navigation with Num Lock enabled. A focus indicator and explicit activation button make direct input visible and recoverable.
+
+- Root cause: Tk on Windows uses state bit 8 for Num Lock and 0x20000 for Alt; X11 keeps Mod1 (8) for Alt. See [Tk keyboard mapping](https://github.com/tcltk/tk/blob/core-8-6-branch/win/tkWinX.c) and [modifier constants](https://github.com/tcltk/tk/blob/core-8-6-branch/generic/tkInt.h).
+- Regression coverage includes Windows native WM_CHAR messages with thread-local Num Lock state restored afterward, mapped notebook focus, modifier/navigation encoding, and a real local encrypted SSH channel executing pwd with Num Lock enabled. No target-server or full Xshell compatibility claim.
+
 ## 2.18.4 命令输入与刷新 / Command input and refresh
 
 - `ServerPage.tick` 在命令行页面跳过监控 snapshot，其余页面维持原周期，手动刷新和已有请求的收尾不受影响；`CommandPanel.poll` 只消费 SSH 事件，收到输出才重绘终端。
