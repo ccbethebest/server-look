@@ -1,3 +1,12 @@
+## 2.18.3 命令行图形编辑 / Graphical editing from the shell
+
+- 新建命令行后，输入 `vim 文件名` 或 `vi 文件名`，直接打开与文件浏览相同的独立文本编辑窗口；按命令行当前目录解析路径，支持空格与中文文件名。Ctrl+S 保存、Ctrl+Z 撤销，未保存关闭时询问保存/放弃/取消。
+- 采用图形编辑替代启动 Vim，不会留下等待退出的 Vim 进程；终端立即返回提示符，关闭窗口后继续使用。重复打开同一文件会唤起已有窗口。
+- 适用于支持 POSIX 函数的当前 SSH shell，远端需有 python3；只处理单个非选项文件参数。不改远端配置文件；Python 会话、sudo、docker exec、嵌套 SSH 及多文件/带参数命令保持原执行方式。仅替换当前会话的 vi/vim 别名，不修改持久配置。
+- 需要原生 Vim 时使用 `command vim 文件名`。新文件、可执行文件、二进制及超过 4 MiB 的文件不在图形编辑范围；沿用编辑器的只读、断连、外部修改与编码保护。
+- 补齐应用方向键、F1–F12、修饰键、括号粘贴、备用屏幕恢复与中文光标位置。类似兼容性问题后续优先复用合适的图形窗口；当前并未自动重写其他终端程序。
+- In a new POSIX SSH shell with python3, `vim FILE` / `vi FILE` opens the existing graphical editor relative to the shell's current directory. Ctrl+S saves, Ctrl+Z undoes, and closing unsaved edits asks Save/Discard/Cancel. No Vim process starts; the prompt returns immediately. `command vim FILE` runs native Vim. Options, multiple files, sudo, containers, nested SSH and Python sessions retain normal execution. vi/vim aliases are replaced only in this shell session; persistent profiles remain unchanged. Existing text files only, up to 4 MiB, with the editor's existing permission, conflict and encoding checks. Application keys, function keys, bracketed paste, alternate-screen restoration and wide-character cursor positions have regression coverage; this does not assert full Xshell parity or target-server verification.
+
 # 开发与维护说明
 
 ## 2.18.2 连接与终端修复 / Connection and terminal fixes

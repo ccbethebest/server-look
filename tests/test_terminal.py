@@ -81,6 +81,9 @@ class WorkspaceTests(unittest.TestCase):
                 panel.new_python()
                 panel.poll()
                 self.assertEqual(len(panel.sessions), 3)
+                # Each shell installs its own editor bridge; Python does not.
+                self.assertEqual(made[0].send.call_count, 1)
+                made[0].send.reset_mock()
                 item = list(panel.sessions.values())[-1]
                 item['editor'].insert('1.0', 'for i in range(2):\n    print(i)')
                 panel.execute_cell(item)

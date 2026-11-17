@@ -1,9 +1,12 @@
 """Per-server command workspace with independent shell and Python PTYs."""
 import queue
 import threading
+import secrets
 from tkinter import font as tkfont
 from server_look.localization.localized_ui import tk, ttk, messagebox
 from server_look.transport.terminal import TerminalSession, python_command
+from server_look.transport.terminal_editor import EditorBridge, editor_setup
+from server_look.transport.terminal_input import encode_key
 from server_look.transport.ssh_keys import detect_keys, ensure_key, configure_key, check_key
 
 
@@ -65,7 +68,9 @@ class CommandPanel:
         stream = pyte.Stream(screen)
         session = TerminalSession(self.page.connection, python=python)
         item = {'frame': frame, 'output': output, 'screen': screen, 'stream': stream,
-                'session': session, 'ready': False, 'ended': False}
+                'session': session, 'ready': False, 'ended': False,
+                'editor_bridge': None if python else EditorBridge(secrets.token_hex(16)),
+                'connection': self.page.connection, 'generation': self.page.generation}
         # pyte answers terminal status queries through the same SSH input queue.
         screen.write_process_input = session.send
         self.sessions[str(frame)] = item
@@ -104,13 +109,7 @@ class CommandPanel:
                 return self.paste(item)
             if event.keysym.lower() == 'c' and item['output'].tag_ranges('sel'):
                 return self.copy(item)
-            if len(event.keysym) == 1 and 'a' <= event.keysym.lower() <= 'z':
-                return self.send(item, chr(ord(event.keysym.lower()) - 96))
-        keys = {'Return': '\r', 'BackSpace': '\x7f', 'Tab': '\t', 'Escape': '\x1b',
-                'Up': '\x1b[A', 'Down': '\x1b[B', 'Right': '\x1b[C', 'Left': '\x1b[D',
-                'Home': '\x1b[H', 'End': '\x1b[F', 'Delete': '\x1b[3~',
-                'Prior': '\x1b[5~', 'Next': '\x1b[6~'}
-        text = keys.get(event.keysym, event.char)
+        text = encode_key(event.keysym, event.char, event.state, (1 << 5) in item['screen'].mode)
         if text:
             self.send(item, text)
         return 'break'
@@ -130,6 +129,8 @@ class CommandPanel:
         if '\n' in text or '\r' in text:
             if not messagebox.askyesno('粘贴多行命令', '剪贴板包含多行，粘贴后可能立即执行。是否继续？', parent=self.frame):
                 return 'break'
+        if (2004 << 5) in item['screen'].mode:
+            text = '\x1b[200~' + text + '\x1b[201~'
         return self.send(item, text)
 
     def execute_cell(self, item):
@@ -149,7 +150,10 @@ class CommandPanel:
         history = [''.join(line[x].data for x in range(screen.columns)) for line in screen.history.top]
         output.delete('1.0', 'end')
         output.insert('1.0', '\n'.join(history + screen.display))
-        output.mark_set('insert', f'{len(history) + screen.cursor.y + 1}.{screen.cursor.x}')
+        prefix = ''.join(screen.buffer[screen.cursor.y][x].data
+                         for x in range(min(screen.cursor.x, screen.columns)))
+        column = output.tk.call('string', 'length', prefix)
+        output.mark_set('insert', f'{len(history) + screen.cursor.y + 1}.{column}')
         output.see('insert')
 
     def poll(self):
@@ -179,7 +183,17 @@ class CommandPanel:
                 item['ready'] = True
                 self.notice.set('会话已连接 · Ctrl+C 中断 · Ctrl+Shift+C/V 复制粘贴')
                 self.resize(item)
+                if item['editor_bridge']:
+                    self.send(item, editor_setup(item['editor_bridge'].token) + '\r')
+                    self.notice.set('会话已连接 · vim/vi 文件名打开图形编辑器 · command vim 使用原生终端')
             elif kind == 'data':
+                if item['editor_bridge']:
+                    value, paths = item['editor_bridge'].feed(value)
+                    if (not item['ended'] and not self.page.readonly.get() and
+                            item['connection'] is self.page.connection and
+                            item['generation'] == self.page.generation):
+                        for path in paths:
+                            self.page.resources.editors.open(path, remote=True)
                 item['stream'].feed(value)
                 dirty = True
             else:

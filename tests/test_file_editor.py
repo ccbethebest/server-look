@@ -128,6 +128,43 @@ class EditorWindowTests(unittest.TestCase):
         self.assertTrue(editor.closed)
         self.assertEqual(self.path.read_text(encoding='utf-8'), 'original changed saved on close')
 
+    def test_terminal_request_uses_remote_editor_save_and_close(self):
+        import json
+        import queue
+        from tkinter import ttk
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        from server_look.ui.command_panel import CommandPanel
+        connection = Mock()
+        connection.request.side_effect = lambda action, options: edit_file(**options)
+        self.page.connection = connection
+        self.page.tabs = ttk.Notebook(self.root)
+        self.page.resources = SimpleNamespace(editors=self.manager)
+        with patch('server_look.ui.command_panel.TerminalSession',
+                   side_effect=lambda *a, **kw: Mock(events=queue.Queue())):
+            panel = CommandPanel(self.page)
+            try:
+                panel.new_shell()
+                item = next(iter(panel.sessions.values()))
+                bridge = item['editor_bridge']
+                request = bridge.prefix + json.dumps(str(self.path)) + '\x07prompt> '
+                item['session'].events.put(('ready', None))
+                item['session'].events.put(('data', request))
+                panel.poll_session(item)
+                editor = self.manager.windows[0]
+                self.wait(editor)
+                self.assertEqual(editor.content(), 'original')
+                editor.text.insert('end', ' saved from terminal')
+                with patch('server_look.ui.text_editor.messagebox.askyesnocancel', return_value=True):
+                    editor.close()
+                self.wait(editor)
+                self.assertTrue(editor.closed)
+                self.assertEqual(self.path.read_text(), 'original saved from terminal')
+                self.assertIn('prompt>', item['output'].get('1.0', 'end'))
+                self.assertFalse(item['ended'])
+            finally:
+                panel.close()
+
     def test_remote_save_guards_and_conflict_keep_editor_open(self):
         from unittest.mock import Mock, patch
         connection = Mock()

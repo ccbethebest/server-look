@@ -321,3 +321,5 @@ ENGLISH.update({
     '已取消添加公钥': 'Public key installation cancelled',
     '公钥已添加，已配对：~/.ssh/authorized_keys': 'Public key added; paired: ~/.ssh/authorized_keys',
 })
+
+ENGLISH['会话已连接 · vim/vi 文件名打开图形编辑器 · command vim 使用原生终端'] = 'Connected · vim/vi FILE opens editor · command vim runs native Vim'
