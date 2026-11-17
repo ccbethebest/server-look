@@ -74,7 +74,9 @@ class TextEditor:
         area = ttk.Frame(self.window)
         self.area = area
         area.pack(fill='both', expand=True)
-        self.text = tk.Text(area, undo=True, autoseparators=True, maxundo=-1, wrap='none')
+        self.text = tk.Text(area, undo=True, autoseparators=True, maxundo=-1, wrap='none',
+                            font=('Consolas', 14))
+        self.text._serverlook_min_font_size = 14
         vertical = ttk.Scrollbar(area, command=self.text.yview)
         horizontal = ttk.Scrollbar(area, orient='horizontal', command=self.text.xview)
         self.text.configure(xscrollcommand=horizontal.set)

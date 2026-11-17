@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from server_look.remote.file_editor import edit_file
 
 
@@ -164,6 +165,23 @@ class EditorWindowTests(unittest.TestCase):
         text.event_generate('<Tab>')
         self.assertEqual(editor.content(), 'al    pha\nbeta\n\nplain\n')
 
+    def test_editor_font_stays_readable_after_theme_refresh(self):
+        from tkinter import font
+        from server_look.ui.theme import apply_theme
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        self.assertEqual(font.Font(root=self.root, font=editor.text.cget('font')).actual('size'), 14)
+        for size in (10, 18, 10):
+            self.root._serverlook_options = {'font_size': size}
+            apply_theme(self.root)
+            self.root.update()
+            expected = max(14, size)
+            self.assertEqual(font.Font(root=self.root, font=editor.text.cget('font')).actual('size'), expected)
+            item = editor.line_numbers.find_all()[0]
+            self.assertEqual(font.Font(root=self.root, font=editor.line_numbers.itemcget(item, 'font')).actual('size'), expected)
+        self.assertFalse(editor.dirty())
+
     def test_line_numbers_follow_scroll_and_font(self):
         self.path.write_text('\n'.join('text ' + str(i) for i in range(1, 301)), encoding='utf-8')
         self.manager.open(self.path)
@@ -232,7 +250,6 @@ class EditorWindowTests(unittest.TestCase):
         self.assertFalse(editor.search_bar.winfo_ismapped())
 
     def test_undo_redo_save_and_close_confirmations(self):
-        from unittest.mock import patch
         self.manager.open(self.path)
         editor = self.manager.windows[0]
         self.wait(editor)

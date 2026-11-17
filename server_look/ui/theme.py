@@ -178,7 +178,8 @@ def apply_theme(root, name='深海蓝'):
         if isinstance(widget, tk.Toplevel):
             widget.configure(background=BACKGROUND)
         if isinstance(widget, tk.Text):
-            widget.configure(font=('Consolas', FONT[1]), background=SURFACE, foreground=TEXT, insertbackground=TEXT,
+            font_size = max(FONT[1], getattr(widget, '_serverlook_min_font_size', 0))
+            widget.configure(font=('Consolas', font_size), background=SURFACE, foreground=TEXT, insertbackground=TEXT,
                              selectbackground=SELECTED, selectforeground='#ffffff',
                              highlightbackground=RAISED, highlightcolor=ACCENT)
         elif isinstance(widget, tk.Menu):
