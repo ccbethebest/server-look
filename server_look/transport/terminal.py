@@ -1,13 +1,28 @@
 """Interactive PTY channels; all blocking I/O happens outside the Tk thread."""
 import codecs
+import base64
 import json
+import secrets
 from pathlib import Path
 import queue
 import threading
 
 
 def python_command(source):
-    return 'exec(compile(' + json.dumps(source, ensure_ascii=True) + ", '<ServerLook cell>', 'exec'))\n"
+    command = 'exec(compile(' + json.dumps(source, ensure_ascii=True) + ", '<ServerLook cell>', 'exec'))\n"
+    if len(command) < 2000:
+        return command
+    # PTYs can truncate a long canonical input line. Stage large scripts using
+    # short ASCII lines, then compile once so indentation and tracebacks survive.
+    name = '_serverlook_source_' + secrets.token_hex(8)
+    encoded = base64.b64encode(source.encode('utf-8')).decode('ascii')
+    lines = [name + " = ''"]
+    lines.extend(name + ' += ' + repr(encoded[offset:offset + 600])
+                 for offset in range(0, len(encoded), 600))
+    program = (f'try:\n    exec(compile(__import__("base64").b64decode({name}).decode("utf-8"), '
+               f'"<ServerLook cell>", "exec"))\nfinally:\n    del {name}')
+    lines.append('exec(' + json.dumps(program) + ')')
+    return '\n'.join(lines) + '\n'
 
 
 class TerminalSession:

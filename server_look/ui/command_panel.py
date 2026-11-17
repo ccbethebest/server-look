@@ -112,15 +112,13 @@ class CommandPanel:
         output.bind('<Map>', lambda event: self.activate_terminal(item, force=False))
         output.bind('<Configure>', lambda event: self.resize(item))
         if python:
-            editor_bar = ttk.Frame(frame)
-            editor_bar.pack(fill='x')
-            ttk.Label(editor_bar, text='Python 多行代码（Ctrl+Enter 执行，变量保留）').pack(side='left')
-            editor = tk.Text(frame, height=6, wrap='none', font=('Consolas', 10), undo=True)
-            editor.pack(fill='x')
-            item['editor'] = editor
-            ttk.Button(editor_bar, text='执行代码', command=lambda: self.execute_cell(item)).pack(side='right')
-            editor.bind('<Control-Return>', lambda event: self.execute_cell(item))
-            bind_text_menu(editor)
+            from server_look.ui.context_python import ContextPythonWindow
+            window = ContextPythonWindow(self, item, standalone=True)
+            item['python_window'] = window
+            item['python_windows'] = [window]
+            item['editor'] = window.editor
+            ttk.Button(input_bar, text='打开 Python 脚本编辑器',
+                       command=window.window.lift).pack(side='left')
         self.notice.set('正在打开会话…')
         app = getattr(self.page.root.winfo_toplevel(), '_serverlook_app', None)
         if app:
@@ -259,7 +257,9 @@ class CommandPanel:
         return self.send(item, text)
 
     def execute_cell(self, item):
-        return self.send(item, python_command(item['editor'].get('1.0', 'end-1c')))
+        if item.get('python_window'):
+            return item['python_window'].execute()
+        return 'break'
 
     def resize(self, item):
         output = item['output']
@@ -318,6 +318,8 @@ class CommandPanel:
                         self.bridge_event(item, event, payload)
                 else:
                     item['stream'].feed(value)
+                    if item.get('python_window'):
+                        item['python_window'].feed(value)
                 dirty = True
             else:
                 item['ended'] = True

@@ -1,3 +1,11 @@
+## 2.19.0 统一 Python 脚本编辑器
+
+`ui/context_python.py` 同时承载独立 Python 会话与 Shell 桥接的脚本编辑窗口：原生可撤销 Text 与只读 pyte 输出分离，Panedwindow 支持调整比例；本地文件、搜索与 stdin 单独处理。`command_panel.py` 为独立入口创建同一窗口并将输出路由过去，兼容原 execute_cell API。执行前校验只读、连接对象及 generation，避免向旧环境发送代码。
+
+`transport/terminal.py:python_command` 短脚本保留原协议；长脚本使用随机变量暂存 Base64，每行约 600 字符，最后一次编译执行并清理暂存变量，避免 PTY canonical 输入行截断。解释器全局变量继续保留，不模拟完整 IDE 的进程重启语义。
+
+回归覆盖两入口一致、结果不干扰光标/正文、多行与选区执行、本地保存/搜索/取消关闭、连接替换拒绝执行、大脚本 Unicode 与暂存清理。真实远端 Docker 仍需现场验证。
+
 ## 2.18.9 容器提示符下的 Vim 弹窗修复
 
 - 修复终端直接输入 `vim 文件名` / `vi 文件名` 时，因为 Bash/Readline 的应用光标键模式被误认为全屏程序而跳过图形编辑桥接的问题。Docker 新 Shell 未继承桥接函数时也会恢复桥接。
