@@ -19,7 +19,8 @@ request = json.load(sys.stdin)
 monitor = types.ModuleType('npu_top_remote')
 exec(compile(request.pop('source'), '<npu-monitor>', 'exec'), monitor.__dict__)
 resources = types.ModuleType('server_resources_remote')
-exec(compile(request.pop('resource_source'), '<server-resources>', 'exec'), resources.__dict__)
+resource_source = request.pop('resource_source')
+exec(compile(resource_source, '<server-resources>', 'exec'), resources.__dict__)
 action = request['action']
 if action == 'snapshot':
     data = monitor.collect()
@@ -67,7 +68,10 @@ elif action in ('term', 'kill'):
 elif action == 'kill_npu':
     print(json.dumps(monitor.kill_npu_tasks(request['targets'])))
 elif action == 'edit_file':
-    print(json.dumps(resources.edit_file(**request['options'])))
+    if request.get('context') is not None:
+        print(json.dumps(resources.edit_in_context(request['context'], request['options'], resource_source)))
+    else:
+        print(json.dumps(resources.edit_file(**request['options'])))
 elif action == 'task_details':
     print(json.dumps(monitor.task_details(int(request['pid']), int(request['ticks']))))
 elif action == 'stop':

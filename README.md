@@ -1,3 +1,15 @@
+## 2.18.8 Docker 内文件编辑与 Python 窗口
+
+- 在当前 Shell（含已进入的 Docker）输入单独的 `python` 或 `python3`，弹出独立多行 Python 窗口。直接在当前 Shell 启动解释器，继承其工作目录、环境变量和当前虚拟环境，连续执行保留变量；Ctrl+Enter 执行，支持原生撤销、复制、粘贴、删除。
+- Python 输出区可输入 `input()` 的内容；“中断 Ctrl+C”中断执行，“退出 Python”或关闭窗口先中断再请求退出，收到退出确认后关闭窗口并返回原 Shell。程序若不响应中断，可关闭原 Shell 会话；该会话的 Python 窗口随之关闭。Python 运行期间，原 Shell 的输入转由弹窗接管。
+- `python 脚本.py`、`python -m ...`、`python -c ...` 保持正常执行；`command python` 可使用原生终端 Python。命令输入栏和可视终端的单行输入都会恢复桥接。升级后新建 Shell 会话；工具栏“新建 Python”仍是初始服务器上的独立 Python 会话。
+
+- 修复在 Docker 内执行 `vim 文件` 时，图形编辑器误去宿主机读取相同路径的问题。
+- Shell 请求携带内核启动标识、挂载命名空间及 UID/GID；后台按命名空间唯一定位运行中容器，通过 `docker exec -i --user UID:GID` 在容器内读取和保存。每次保存再次核对身份，保留编码、换行及外部修改冲突检查。
+- 编辑器状态栏显示 Docker 容器名称及 ID；宿主机和容器的同名文件可分别打开。容器退出、重启、身份改变或无法定位时中止操作，不回退到宿主机文件。
+- 要求连接用户有 Docker 和 `/proc` 身份读取权限，容器内提供 `sh`、`readlink`、`id`、`cat` 和 Python 3（`python3` 或 `python`）。无法核对身份、切换用户或嵌套 SSH 不匹配时提示错误。不会创建不存在的文件。
+- 验证包含容器协议分片、UID/GID 传递、实际 Python 编辑后台读写、保存冲突及图形编辑器上下文保留；当前 Windows 环境没有可用 Docker，尚未在用户服务器的真实容器内验证。
+
 ## 2.18.7 会话关闭与 vim 弹窗修复 / Session close and graphical editing
 
 - 文本编辑窗口新增“查找 (Ctrl+F)”，按文字精确匹配，支持中文、上一个/下一个、Enter/Shift+Enter、F3/Shift+F3 和循环查找；Esc 关闭查找。搜索不修改文件内容。
@@ -31,7 +43,7 @@
 
 - 新建命令行后，输入 `vim 文件名` 或 `vi 文件名`，直接打开与文件浏览相同的独立文本编辑窗口；按命令行当前目录解析路径，支持空格与中文文件名。Ctrl+S 保存、Ctrl+Z 撤销，未保存关闭时询问保存/放弃/取消。
 - 采用图形编辑替代启动 Vim，不会留下等待退出的 Vim 进程；终端立即返回提示符，关闭窗口后继续使用。重复打开同一文件会唤起已有窗口。
-- 适用于支持 POSIX 函数的当前 SSH shell，无需远端 python3（2.18.7 起）；只处理单个非选项文件参数。不改远端配置文件；Python 会话、sudo、docker exec、嵌套 SSH 及多文件/带参数命令保持原执行方式。仅替换当前会话的 vi/vim 别名，不修改持久配置。
+- 适用于支持 POSIX 函数的当前 SSH shell，无需远端 python3（2.18.7 起）；只处理单个非选项文件参数。不改远端配置文件；Python 会话、sudo、docker exec 命令本身、嵌套 SSH 及多文件/带参数命令保持原执行方式；进入 Docker 后的单文件 vi/vim 支持见 2.18.8。仅替换当前会话的 vi/vim 别名，不修改持久配置。
 - 需要原生 Vim 时使用 `command vim 文件名`。新文件、可执行文件、二进制及超过 4 MiB 的文件不在图形编辑范围；沿用编辑器的只读、断连、外部修改与编码保护。
 - 补齐应用方向键、F1–F12、修饰键、括号粘贴、备用屏幕恢复与中文光标位置。类似兼容性问题后续优先复用合适的图形窗口；当前并未自动重写其他终端程序。
 - In a new POSIX SSH shell, `vim FILE` / `vi FILE` opens the existing graphical editor relative to the shell's current directory. Ctrl+S saves, Ctrl+Z undoes, and closing unsaved edits asks Save/Discard/Cancel. No Vim process starts; the prompt returns immediately. `command vim FILE` runs native Vim. Options, multiple files, sudo, containers, nested SSH and Python sessions retain normal execution. vi/vim aliases are replaced only in this shell session; persistent profiles remain unchanged. Existing text files only, up to 4 MiB, with the editor's existing permission, conflict and encoding checks. Application keys, function keys, bracketed paste, alternate-screen restoration and wide-character cursor positions have regression coverage; this does not assert full Xshell parity or target-server verification.

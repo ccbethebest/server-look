@@ -39,7 +39,7 @@ class EditorBridgeTests(unittest.TestCase):
     def test_setup_is_one_input_line_and_needs_no_remote_python(self):
         program = editor_setup('fixture')
         self.assertNotIn('\n', program)
-        self.assertNotIn('python', program)
+        self.assertNotIn('python -c', program)
 
     def test_real_shell_resolves_quoted_filename_and_returns_to_prompt(self):
         import os
@@ -58,7 +58,8 @@ class EditorBridgeTests(unittest.TestCase):
             text, paths = EditorBridge('fixture').feed(result.stdout)
             self.assertEqual(text.strip(), 'DONE')
             expected = subprocess.check_output([shell, '-c', 'pwd'], cwd=folder, text=True).strip() + '/' + path.name
-            self.assertEqual(paths, [expected, expected])
+            self.assertEqual([request['path'] for request in paths], [expected, expected])
+            self.assertEqual(set(paths[0]['context']), {'boot', 'namespace', 'uid', 'gid'})
             self.assertEqual(path.read_text(), 'original')
 
 

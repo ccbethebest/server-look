@@ -10,17 +10,18 @@ class EditorManager:
         self.page = page
         self.windows = []
 
-    def open(self, path, remote=False):
+    def open(self, path, remote=False, context=None):
         if remote and not self.page.connection:
             return
         for editor in self.windows:
             if (editor.path == str(path) and editor.remote == remote
+                    and editor.context == context
                     and (not remote or (editor.connection is self.page.connection
                                         and editor.generation == self.page.generation))):
                 editor.window.deiconify()
                 editor.window.lift()
                 return
-        editor = TextEditor(self, str(path), remote)
+        editor = TextEditor(self, str(path), remote, context)
         self.windows.append(editor)
 
     def close_all(self):
@@ -31,9 +32,10 @@ class EditorManager:
 
 
 class TextEditor:
-    def __init__(self, manager, path, remote):
+    def __init__(self, manager, path, remote, context=None):
         self.manager, self.page = manager, manager.page
         self.path, self.remote = path, remote
+        self.context = context
         self.connection, self.generation = self.page.connection, self.page.generation
         self.document = None
         self.baseline = ''
@@ -152,7 +154,10 @@ class TextEditor:
         def work():
             try:
                 if self.remote:
-                    result = self.connection.request('edit_file', options=dict(path=self.path, **options))
+                    request = dict(options=dict(path=self.path, **options))
+                    if self.context is not None:
+                        request['context'] = self.context
+                    result = self.connection.request('edit_file', **request)
                 else:
                     result = edit_file(self.path, **options)
                 self.events.put((action, result, None))
@@ -181,13 +186,14 @@ class TextEditor:
                 self.text.insert('1.0', self.baseline)
                 self.text.edit_reset()
                 self.text.edit_modified(False)
-                self.status.set(result['encoding'] + ' · Ctrl+S 保存 · Ctrl+Z 撤销 · Ctrl+Y 重做')
+                self.location = result.get('location', '服务器' if self.remote else '本地')
+                self.status.set(self.location + ' · ' + result['encoding'] + ' · Ctrl+S 保存 · Ctrl+Z 撤销 · Ctrl+Y 重做')
                 self.text.focus_set()
             else:
                 self.document['digest'] = result['digest']
                 self.baseline = self.content()
                 self.text.edit_modified(True)
-                self.status.set('已保存 · ' + self.document['encoding'])
+                self.status.set('已保存 · ' + self.location + ' · ' + self.document['encoding'])
                 if self.close_after_save:
                     self.destroy()
                     return

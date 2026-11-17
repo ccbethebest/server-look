@@ -1,11 +1,69 @@
 """Bounded plain-text I/O shared by local editing and the SSH worker."""
 import hashlib
+import json
 import os
 from pathlib import Path
 import stat
+import subprocess
 
 MAX_TEXT_BYTES = 4 * 1024 * 1024
 EXECUTABLE_SUFFIXES = {'.exe', '.com', '.dll', '.bat', '.cmd', '.ps1', '.msi', '.lnk', '.scr'}
+
+
+def editor_identity():
+    return dict(boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                namespace=os.readlink('/proc/self/ns/mnt'), uid=str(os.geteuid()), gid=str(os.getegid()))
+
+
+def verify_editor_identity(context):
+    try:
+        matches = editor_identity() == context
+    except (OSError, AttributeError):
+        matches = False
+    if not matches:
+        raise ValueError('编辑会话身份已改变或无法核对，请从当前终端重新打开文件')
+
+
+def docker_editor_command(args, **options):
+    result = subprocess.run(['docker', *args], text=True, encoding='utf-8',
+                            errors='replace', capture_output=True, timeout=30, **options)
+    if result.returncode:
+        raise ValueError('容器文本编辑失败：' + (result.stderr or result.stdout).strip()[-1500:])
+    return result.stdout
+
+
+def edit_in_context(context, options, source):
+    if (not isinstance(context, dict) or set(context) != {'boot', 'namespace', 'uid', 'gid'}
+            or not all(isinstance(value, str) and value for value in context.values())
+            or not context['uid'].isdecimal() or not context['gid'].isdecimal()):
+        raise ValueError('无法确定终端文件系统身份，请在 Linux 终端重新打开文件')
+    current = editor_identity()
+    if context['boot'] != current['boot']:
+        raise ValueError('终端已进入另一台服务器，请直接连接该服务器后编辑')
+    if context['namespace'] == current['namespace']:
+        verify_editor_identity(context)
+        return dict(edit_file(**options), location='服务器')
+    ids = docker_editor_command(['ps', '--quiet', '--no-trunc']).split()
+    containers = json.loads(docker_editor_command(['inspect', *ids])) if ids else []
+    matches = []
+    for container in containers:
+        pid = int(container['State']['Pid'])
+        try:
+            namespace = os.readlink('/proc/' + str(pid) + '/ns/mnt')
+        except OSError:
+            continue
+        if namespace == context['namespace']:
+            matches.append(container)
+    if len(matches) != 1:
+        raise ValueError('无法唯一定位终端所在的运行中 Docker 容器，请检查容器状态及 Docker 权限')
+    container = matches[0]
+    # Validate again inside the container to reject restart/namespace races.
+    program = source + '\nimport json,sys\np=json.load(sys.stdin)\nverify_editor_identity(p["context"])\nprint(json.dumps(edit_file(**p["options"])))\n'
+    launcher = 'if command -v python3 >/dev/null 2>&1; then exec python3 -c "$1"; elif command -v python >/dev/null 2>&1; then exec python -c "$1"; else echo "容器内未找到 Python，请安装 Python 3 后重试" >&2; exit 127; fi'
+    output = docker_editor_command(['exec', '-i', '--user', context['uid'] + ':' + context['gid'],
+                                    container['Id'], 'sh', '-c', launcher, 'server-look-editor', program],
+                                   input=json.dumps(dict(context=context, options=options)))
+    return dict(json.loads(output), location='Docker ' + container['Name'].lstrip('/') + ' · ' + container['Id'][:12])
 
 
 def checked_file(stream, path):

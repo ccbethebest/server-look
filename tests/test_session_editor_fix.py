@@ -63,7 +63,7 @@ class SessionEditorFixTests(TerminalRecoveryTests):
                                 text=True, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
         text, paths = EditorBridge('recovery').feed(result.stdout)
-        self.assertEqual(paths, ['/notes with spaces.txt'])
+        self.assertEqual([request['path'] for request in paths], ['/notes with spaces.txt'])
         self.assertEqual(text, 'READY')
 
     def test_native_editor_and_other_commands_are_preserved(self):

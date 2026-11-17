@@ -193,6 +193,33 @@ class EditorWindowTests(unittest.TestCase):
             finally:
                 panel.close()
 
+    def test_container_context_is_kept_for_save_and_separates_same_paths(self):
+        from unittest.mock import Mock
+        context = dict(boot='boot', namespace='mnt:[42]', uid='0', gid='0')
+        connection = Mock()
+        def request(action, options, **kwargs):
+            self.assertEqual(kwargs.get('context'), context)
+            result = edit_file(**dict(options, path=str(self.path)))
+            return dict(result, location='Docker training · abc123')
+        connection.request.side_effect = request
+        self.page.connection = connection
+        self.manager.open('/tmp/notes.txt', remote=True, context=context)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        self.assertIn('Docker training', editor.status.get())
+        self.manager.open('/tmp/notes.txt', remote=True, context=context)
+        self.assertEqual(len(self.manager.windows), 1)
+        editor.text.insert('end', ' updated')
+        editor.save()
+        self.wait(editor)
+        self.assertEqual(self.path.read_text(), 'original updated')
+        self.assertEqual(connection.request.call_count, 2)
+        # An identical path on the host belongs to a separate editor window.
+        connection.request.side_effect = lambda action, options: edit_file(str(self.path))
+        self.manager.open('/tmp/notes.txt', remote=True)
+        self.wait(self.manager.windows[1])
+        self.assertEqual(len(self.manager.windows), 2)
+
     def test_remote_save_guards_and_conflict_keep_editor_open(self):
         from unittest.mock import Mock, patch
         connection = Mock()

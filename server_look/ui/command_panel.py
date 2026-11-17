@@ -150,6 +150,10 @@ class CommandPanel:
         return 'break'
 
     def transmit(self, item, text, track=True):
+        if track and item.get('python_window'):
+            self.notice.set('当前 Shell 正在运行 Python，请在弹出的 Python 窗口中操作')
+            item['python_window'].window.lift()
+            return False
         if item['ended']:
             self.notice.set('会话已结束，请新建会话')
         elif not item['ready']:
@@ -285,6 +289,7 @@ class CommandPanel:
                 self.poll_session(item)
             except Exception as exc:
                 item['ended'] = True
+                self.close_python_windows(item)
                 item['session'].close()
                 self.notice.set(f'终端显示失败，请新建会话：{exc}')
         while not self.jobs.empty():
@@ -307,20 +312,48 @@ class CommandPanel:
                     self.notice.set('会话已连接 · vim/vi 文件名打开图形编辑器 · command vim 使用原生终端')
             elif kind == 'data':
                 if item['editor_bridge']:
-                    value, paths = item['editor_bridge'].feed(value)
-                    if (not item['ended'] and not self.page.readonly.get() and
-                            item['connection'] is self.page.connection and
-                            item['generation'] == self.page.generation):
-                        for path in paths:
-                            self.page.resources.editors.open(path, remote=True)
-                item['stream'].feed(value)
+                    for event, payload in item['editor_bridge'].feed_events(value):
+                        self.bridge_event(item, event, payload)
+                else:
+                    item['stream'].feed(value)
                 dirty = True
             else:
                 item['ended'] = True
+                self.close_python_windows(item)
                 self.notice.set(value)
                 break
         if dirty:
             self.render(item)
+
+    def bridge_event(self, item, event, payload):
+        if event == 'text':
+            window = item.get('python_window')
+            if window:
+                window.feed(payload)
+            else:
+                item['stream'].feed(payload)
+            return
+        if (item['ended'] or self.page.readonly.get() or item['connection'] is not self.page.connection
+                or item['generation'] != self.page.generation):
+            return
+        if event == 'python':
+            if payload and not item.get('python_window'):
+                from server_look.ui.context_python import ContextPythonWindow
+                window = ContextPythonWindow(self, item)
+                item['python_window'] = window
+                item.setdefault('python_windows', []).append(window)
+            elif not payload and item.get('python_window'):
+                item.pop('python_window').finish()
+        elif isinstance(payload, dict):
+            self.page.resources.editors.open(payload['path'], remote=True, context=payload['context'])
+        else:
+            self.page.resources.editors.open(payload, remote=True)
+
+    @staticmethod
+    def close_python_windows(item):
+        for window in item.pop('python_windows', []):
+            window.destroy()
+        item.pop('python_window', None)
 
     def key_action(self, action):
         if self.key_busy:
@@ -398,6 +431,7 @@ class CommandPanel:
         item = self.sessions.pop(selected, None)
         if item:
             item['ended'] = True
+            self.close_python_windows(item)
             self.tabs.forget(selected)
             item['frame'].destroy()
             item['session'].close()
@@ -405,6 +439,7 @@ class CommandPanel:
 
     def disconnect(self):
         for item in self.sessions.values():
+            self.close_python_windows(item)
             item['session'].close()
             item['ended'] = True
         self.notice.set('连接服务器后可新建多个命令行或 Python 会话')
