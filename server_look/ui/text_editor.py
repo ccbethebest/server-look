@@ -4,6 +4,7 @@ import threading
 from server_look.localization.localized_ui import tk, ttk, messagebox
 from server_look.remote.file_editor import edit_file
 from server_look.ui.line_numbers import LineNumbers
+from server_look.ui.text_indent import bind_indentation
 
 
 class EditorManager:
@@ -56,6 +57,7 @@ class TextEditor:
                                 ('剪切', lambda: self.edit('<<Cut>>')), ('复制', lambda: self.edit('<<Copy>>')),
                                 ('粘贴', lambda: self.edit('<<Paste>>')), ('查找 (Ctrl+F)', self.show_search)]:
             ttk.Button(toolbar, text=label, command=callback).pack(side='left', padx=2)
+        ttk.Label(self.window, text='Tab 缩进 4 格 · Shift+Tab 回退 4 格 · Ctrl+/ 注释/取消注释（#）', padding=(6, 0)).pack(fill='x')
         self.search_bar = ttk.Frame(self.window, padding=6)
         self.search_query = tk.StringVar(master=self.window)
         self.search_status = tk.StringVar(master=self.window)
@@ -91,6 +93,7 @@ class TextEditor:
         self.text.bind('<Control-z>', lambda event: self.edit('<<Undo>>'))
         self.text.bind('<Control-y>', lambda event: self.edit('<<Redo>>'))
         self.text.bind('<Control-a>', self.select_all)
+        bind_indentation(self.text)
         self.window.bind('<Control-f>', self.show_search)
         self.window.bind('<Control-F>', self.show_search)
         self.window.bind('<F3>', self.find_text)

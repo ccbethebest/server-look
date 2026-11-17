@@ -4,6 +4,7 @@ from tkinter import filedialog
 from server_look.localization.localized_ui import tk, ttk, messagebox
 from server_look.transport.terminal import python_command
 from server_look.ui.text_actions import bind_text_menu
+from server_look.ui.text_indent import bind_indentation
 
 
 class ContextPythonWindow:
@@ -20,15 +21,16 @@ class ContextPythonWindow:
         self.window.geometry('1050x800')
         self.window.minsize(700, 500)
         self.window.protocol('WM_DELETE_WINDOW', self.close)
-        self.status = tk.StringVar(value='编辑脚本后按 F5 / Ctrl+Enter 运行 · 变量保留 · Ctrl+S 保存本地 .py')
+        self.status = tk.StringVar(value='Shift+F10 运行 · Alt+Shift+E 运行选中代码 · Ctrl+S 保存本地 .py')
         ttk.Label(self.window, textvariable=self.status).pack(fill='x', padx=8, pady=6)
         bar = ttk.Frame(self.window)
         bar.pack(fill='x', padx=8, pady=4)
         for label, callback in [('打开本地 .py', self.open_file), ('保存 Ctrl+S', self.save),
-                                ('运行 F5', self.execute), ('运行选中代码', self.execute_selection),
+                                ('运行 Shift+F10', self.execute), ('运行选中 Alt+Shift+E', self.execute_selection),
                                 ('中断', lambda: self.send('\x03')), ('查找 Ctrl+F', self.show_search),
                                 ('关闭 Python', self.close)]:
             ttk.Button(bar, text=label, command=callback).pack(side='left', padx=2)
+        ttk.Label(self.window, text='Tab 缩进 4 格 · Shift+Tab 回退 4 格 · Ctrl+/ 注释/取消注释 · F5 / Ctrl+Enter 也可运行').pack(fill='x', padx=8)
         self.search_bar = ttk.Frame(self.window)
         self.search_query = tk.StringVar(master=self.window)
         self.search_status = tk.StringVar(master=self.window)
@@ -52,12 +54,15 @@ class ContextPythonWindow:
         self.stream = pyte.Stream(self.screen)
         bind_text_menu(self.editor)
         self.editor.bind('<Control-Return>', self.execute)
-        self.editor.bind('<Tab>', lambda event: self.insert_indent())
+        bind_indentation(self.editor)
         self.editor.bind('<Control-a>', self.select_all)
         self.editor.bind('<Control-y>', lambda event: self.edit('<<Redo>>'))
         self.editor.bind('<Control-z>', lambda event: self.edit('<<Undo>>'))
         self.editor.tag_configure('search_match', background='#ffe08a', foreground='#171717')
         self.window.bind('<F5>', self.execute)
+        self.window.bind('<Shift-F10>', self.execute)
+        self.window.bind('<Alt-Shift-KeyPress-E>', self.execute_selection)
+        self.window.bind('<Alt-Shift-KeyPress-e>', self.execute_selection)
         self.window.bind('<Control-s>', self.save)
         self.window.bind('<Control-f>', self.show_search)
         self.window.bind('<Control-o>', self.open_file)
@@ -99,7 +104,7 @@ class ContextPythonWindow:
             self.send(python_command(self.editor.get('1.0', 'end-1c')))
         return 'break'
 
-    def execute_selection(self):
+    def execute_selection(self, event=None):
         if self.editor.tag_ranges('sel') and not self.closing:
             self.send(python_command(self.editor.get('sel.first', 'sel.last')))
         return 'break'
@@ -107,12 +112,6 @@ class ContextPythonWindow:
     def submit_input(self, event=None):
         if self.send(self.stdin.get() + '\r'):
             self.stdin.delete(0, 'end')
-        return 'break'
-
-    def insert_indent(self):
-        if self.editor.tag_ranges('sel'):
-            self.editor.delete('sel.first', 'sel.last')
-        self.editor.insert('insert', '    ')
         return 'break'
 
     def select_all(self, event=None):

@@ -1,3 +1,11 @@
+## 2.19.4 编辑快捷键
+
+`ui/text_indent.py` 为文本编辑器和 Python 脚本窗口绑定 Tab、Shift+Tab、ISO_Left_Tab 与 Ctrl+/；使用 Tk 文本索引确定完整行范围，排除选区末尾行首。批量缩进临时关闭 autoseparators 并在前后插入 edit_separator，保证整批编辑一次撤销；禁用控件不修改内容。Ctrl+/ 使用 # 行注释，保留空白缩进，跳过空行。
+
+Python 窗口以 Shift+F10 运行完整文本、Alt+Shift+E 执行选区；复用既有执行通道与连接身份检查，保留 F5 和 Ctrl+Enter。官方键位参考：https://www.jetbrains.com/help/pycharm/index-of-menu-items.html 和 https://www.jetbrains.com/help/pycharm/interactive-console.html 。
+
+回归覆盖真实 Tk 按键事件、多次缩进与回退、短缩进、原有 Tab、空行、禁用状态、撤销重做、注释切换及 Python 实际发送的代码。修改仅涉及本地编辑和快捷键，不变更 SSH / Docker 执行通道。
+
 ## 2.19.2 命令行初始化回显修复
 
 修复进入 Shell 以及执行简单 vi/vim、python 命令时，内部桥接初始化代码整段显示的问题。仅过滤带当前会话专属标记的初始化输入回显，保留用户命令、执行结果与错误信息；不修改远端 Shell 配置。升级后请新建 Shell 会话。

@@ -20,6 +20,28 @@ class ScriptTransportTests(unittest.TestCase):
 
 
 class PythonWorkspaceTests(TerminalRecoveryTests):
+    def test_pycharm_run_keys_and_block_indent(self):
+        window = self.open_context()
+        editor = window.editor
+        source = 'first = 1\nsecond = 2'
+        editor.insert('1.0', source)
+        editor.focus_force()
+        self.root.update()
+        with patch.object(window, 'send') as send:
+            editor.event_generate('<Shift-F10>')
+            send.assert_called_once_with(python_command(source))
+            send.reset_mock()
+            editor.tag_add('sel', '2.0', 'end-1c')
+            editor.event_generate('<Alt-Shift-KeyPress-E>')
+            send.assert_called_once_with(python_command('second = 2'))
+        editor.tag_add('sel', '1.0', 'end-1c')
+        editor.event_generate('<Tab>')
+        self.assertEqual(editor.get('1.0', 'end-1c'), '    first = 1\n    second = 2')
+        editor.event_generate('<Shift-Tab>')
+        self.assertEqual(editor.get('1.0', 'end-1c'), source)
+        editor.event_generate('<Control-slash>')
+        self.assertEqual(editor.get('1.0', 'end-1c'), '# first = 1\n# second = 2')
+
     def open_context(self):
         self.item['ready'] = True
         self.panel.bridge_event(self.item, 'python', True)

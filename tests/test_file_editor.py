@@ -91,6 +91,79 @@ class EditorWindowTests(unittest.TestCase):
         self.root.update()
         self.assertFalse(editor.busy)
 
+    def test_comment_shortcut_toggles_block_preserves_indent_and_undo(self):
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        text = editor.text
+        source = '    alpha\n  # existing\n\nnext'
+        text.delete('1.0', 'end')
+        text.insert('1.0', source)
+        text.edit_reset()
+        text.focus_force()
+        self.root.update()
+        text.tag_add('sel', '1.2', '4.0')
+        text.event_generate('<Control-slash>')
+        self.assertEqual(editor.content(), '    # alpha\n  # # existing\n\nnext')
+        text.event_generate('<Control-slash>')
+        self.assertEqual(editor.content(), source)
+        text.edit_undo()
+        self.assertEqual(editor.content(), '    # alpha\n  # # existing\n\nnext')
+        text.edit_undo()
+        self.assertEqual(editor.content(), source)
+        text.tag_remove('sel', '1.0', 'end')
+        text.mark_set('insert', '4.2')
+        text.event_generate('<Control-slash>')
+        self.assertEqual(editor.content(), source[:-4] + '# next')
+        text.configure(state='disabled')
+        text.event_generate('<Control-slash>')
+        self.assertEqual(editor.content(), source[:-4] + '# next')
+
+    def test_selected_lines_tab_shift_tab_and_single_step_undo(self):
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        text = editor.text
+        text.delete('1.0', 'end')
+        text.insert('1.0', 'alpha\nbeta\ngamma')
+        text.edit_reset()
+        text.focus_force()
+        self.root.update()
+        text.tag_add('sel', '1.2', '3.0')
+        text.event_generate('<Tab>')
+        self.assertEqual(editor.content(), '    alpha\n    beta\ngamma')
+        self.assertTrue(text.tag_ranges('sel'))
+        text.event_generate('<Tab>')
+        self.assertEqual(editor.content(), '        alpha\n        beta\ngamma')
+        text.event_generate('<Shift-Tab>')
+        self.assertEqual(editor.content(), '    alpha\n    beta\ngamma')
+        text.edit_undo()
+        self.assertEqual(editor.content(), '        alpha\n        beta\ngamma')
+        text.edit_undo()
+        self.assertEqual(editor.content(), '    alpha\n    beta\ngamma')
+        text.edit_redo()
+        self.assertEqual(editor.content(), '        alpha\n        beta\ngamma')
+
+    def test_outdent_short_indent_blank_lines_and_cursor_tab(self):
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        text = editor.text
+        text.delete('1.0', 'end')
+        text.insert('1.0', '  alpha\n\tbeta\n\nplain\n')
+        text.focus_force()
+        self.root.update()
+        text.tag_add('sel', '1.0', 'end-1c')
+        text.event_generate('<Shift-Tab>')
+        self.assertEqual(editor.content(), 'alpha\nbeta\n\nplain\n')
+        text.tag_remove('sel', '1.0', 'end')
+        text.mark_set('insert', '1.2')
+        text.event_generate('<Tab>')
+        self.assertEqual(editor.content(), 'al    pha\nbeta\n\nplain\n')
+        text.configure(state='disabled')
+        text.event_generate('<Tab>')
+        self.assertEqual(editor.content(), 'al    pha\nbeta\n\nplain\n')
+
     def test_line_numbers_follow_scroll_and_font(self):
         self.path.write_text('\n'.join('text ' + str(i) for i in range(1, 301)), encoding='utf-8')
         self.manager.open(self.path)
