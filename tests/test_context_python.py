@@ -59,7 +59,7 @@ class RealInterpreterTests(unittest.TestCase):
         from server_look.transport.terminal import python_command
         bash = Path('C:/Program Files/Git/bin/bash.exe')
         shell = str(bash) if bash.exists() else '/bin/bash'
-        program = editor_setup('actual') + '; export SERVER_LOOK_TEST_ENV=container_fixture; python; printf SHELL_RETURNED'
+        program = editor_setup('actual') + 'export SERVER_LOOK_TEST_ENV=container_fixture; python; printf SHELL_RETURNED'
         source = 'import os\nx = 41\nprint(os.environ["SERVER_LOOK_TEST_ENV"], x + 1)'
         result = subprocess.run([shell, '--noprofile', '--norc', '-c', program],
                                 input=python_command(source) + 'raise SystemExit\n',

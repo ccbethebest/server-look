@@ -3,6 +3,8 @@ import json
 import ntpath
 import posixpath
 import shlex
+import re
+import time
 
 
 def editor_setup(token, visual=True):
@@ -36,7 +38,9 @@ def editor_setup(token, visual=True):
                          f'command {name} -u -i -q; '
                          f"printf '\\033]777;server-look;{token};?end\\007'; "
                          f'else command {name} "$@"; fi; }}')
-    return 'unalias vi vim python python3 2>/dev/null || :; eval ' + shlex.quote('; '.join(functions))
+    source = 'unalias vi vim python python3 2>/dev/null || :; eval ' + shlex.quote('; '.join(functions))
+    begin, end = echo_markers(token)
+    return begin + source + end
 
 
 def editor_command(command, token, visual=True):
@@ -50,13 +54,83 @@ def editor_command(command, token, visual=True):
     if ((words and words[0] in ('vi', 'vim') and not any(
             word in (';', '&&', '||', '|', '&', '>', '>>', '<', '(', ')') for word in words))
             or (len(words) == 1 and words[0] in ('python', 'python3'))):
-        return editor_setup(token, visual) + '; ' + command
+        return editor_setup(token, visual) + command
     return command
+
+
+def echo_markers(token):
+    return f': __SL_BEGIN_{token}__; ', f'; : __SL_END_{token}__; '
+
+
+class SetupEchoFilter:
+    """Hide only a session-marked setup echo; malformed echoes fail open."""
+    controls = re.compile(r'\x1b\[[0-?]*[ -/]*(?:[@-~]|$)|[\r\n]')
+
+    def __init__(self, token):
+        self.begin, self.end = echo_markers(token)
+        self.pending = ''
+        self.started = None
+        self.hiding = False
+
+    @classmethod
+    def plain(cls, data):
+        # Keep raw offsets so unrelated terminal controls/output pass unchanged.
+        chars, offsets = [], []
+        start = 0
+        for match in cls.controls.finditer(data):
+            chars.extend(data[start:match.start()])
+            offsets.extend(range(start, match.start()))
+            start = match.end()
+        chars.extend(data[start:])
+        offsets.extend(range(start, len(data)))
+        return ''.join(chars), offsets
+
+    def feed(self, text):
+        data = self.pending + text
+        self.pending = ''
+        if self.started is not None and (time.monotonic() - self.started > 5 or len(data) > 32768):
+            self.started = None
+            self.hiding = False
+            return data
+        output = []
+        while data:
+            plain, offsets = self.plain(data)
+            if not self.hiding:
+                start = plain.find(self.begin)
+                if start < 0:
+                    keep = next((n for n in range(min(len(plain), len(self.begin)-1), 0, -1)
+                                 if plain.endswith(self.begin[:n])), 0)
+                    cut = offsets[len(plain)-keep] if keep else len(data)
+                    output.append(data[:cut])
+                    self.pending = data[cut:]
+                    break
+                cut = offsets[start]
+                output.append(data[:cut])
+                data = data[cut:]
+                self.hiding = True
+                plain, offsets = self.plain(data)
+            end = plain.find(self.end, len(self.begin))
+            if end < 0:
+                self.pending = data
+                break
+            data = data[offsets[end + len(self.end)-1] + 1:]
+            self.hiding = False
+            self.started = None
+        if len(self.pending) > 32768:
+            output.append(self.pending)
+            self.pending = ''
+            self.hiding = False
+        if self.pending and self.started is None:
+            self.started = time.monotonic()
+        elif not self.pending:
+            self.started = None
+        return ''.join(output)
 
 
 class EditorBridge:
     def __init__(self, token):
         self.token = token
+        self.echo_filter = SetupEchoFilter(token)
         self.prefix = '\x1b]777;server-look;' + token + ';'
         self.pending = ''
 
@@ -66,7 +140,7 @@ class EditorBridge:
                 [value for kind, value in events if kind == 'editor'])
 
     def feed_events(self, text):
-        data = self.pending + text
+        data = self.pending + self.echo_filter.feed(text)
         self.pending = ''
         events = []
         while data:

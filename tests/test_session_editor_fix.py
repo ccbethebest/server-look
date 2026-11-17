@@ -2,13 +2,32 @@
 from pathlib import Path
 import subprocess
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from tests.test_terminal_recovery import TerminalRecoveryTests
 from server_look.transport.terminal_editor import EditorBridge, editor_command, editor_setup
 
 
 class SessionEditorFixTests(TerminalRecoveryTests):
+    def test_setup_echo_is_hidden_by_ui_and_timeout_keeps_terminal_usable(self):
+        self.item['session'].events.put(('ready', ''))
+        self.poll()
+        setup = self.item['session'].send.call_args.args[0]
+        self.item['session'].events.put(('data', setup + '\nroot# pwd\r\n/root\r\n'))
+        self.poll()
+        visible = self.item['output'].get('1.0', 'end')
+        self.assertNotIn('__SL_BEGIN_', visible)
+        self.assertNotIn('unalias', visible)
+        self.assertIn('/root', visible)
+        with patch('server_look.transport.terminal_editor.time.monotonic', return_value=0):
+            self.item['session'].events.put(('data', setup[:180]))
+            self.poll()
+        with patch('server_look.transport.terminal_editor.time.monotonic', return_value=10):
+            self.poll()
+        self.assertIn('__SL_BEGIN_', self.item['output'].get('1.0', 'end'))
+        self.panel.send(self.item, 'pwd\r')
+        self.item['session'].send.assert_called_with('pwd\r')
+
     def test_close_button_removes_python_and_keeps_shell_usable(self):
         shell = self.item
         self.panel.new_python()
@@ -51,7 +70,7 @@ class SessionEditorFixTests(TerminalRecoveryTests):
         self.assertTrue(line.matches(screen))
         self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
         sent = self.item['session'].send.call_args.args[0]
-        self.assertTrue(sent.startswith('\x05\x15unalias vi vim'))
+        self.assertTrue(sent.startswith('\x05\x15: __SL_BEGIN_'))
         self.assertTrue(sent.endswith('; vim notes.txt\r'))
 
     def test_container_prompt_with_application_cursor_still_opens_editor(self):
@@ -62,7 +81,7 @@ class SessionEditorFixTests(TerminalRecoveryTests):
             self.item['stream'].feed(char)
         self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
         sent = self.item['session'].send.call_args.args[0]
-        self.assertTrue(sent.startswith('\x05\x15unalias vi vim'), repr(sent))
+        self.assertTrue(sent.startswith('\x05\x15: __SL_BEGIN_'), repr(sent))
         self.assertTrue(sent.endswith('; vim /tmp/container.txt\r'))
         self.panel.page.resources = MagicMock()
         context = dict(boot='boot-fixture', namespace='mnt:[42]', uid='0', gid='0')
@@ -80,7 +99,7 @@ class SessionEditorFixTests(TerminalRecoveryTests):
             self.item['stream'].feed(char)
         self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
         sent = self.item['session'].send.call_args.args[0]
-        self.assertTrue(sent.startswith('\x05\x15unalias vi vim'), repr(sent))
+        self.assertTrue(sent.startswith('\x05\x15: __SL_BEGIN_'), repr(sent))
         self.assertTrue(sent.endswith('; python3\r'))
 
     def test_fullscreen_editor_keeps_return_and_does_not_inject_shell_code(self):

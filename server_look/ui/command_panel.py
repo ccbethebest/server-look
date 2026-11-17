@@ -329,6 +329,10 @@ class CommandPanel:
                 self.close_python_windows(item)
                 self.notice.set(value)
                 break
+        if item['editor_bridge']:
+            for event, payload in item['editor_bridge'].feed_events(''):
+                self.bridge_event(item, event, payload)
+                dirty = True
         if dirty:
             self.render(item)
 
