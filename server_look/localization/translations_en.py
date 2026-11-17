@@ -297,3 +297,26 @@ ENGLISH = {
 ENGLISH.update({'命令行控制': 'Command line', '新建命令行': 'New terminal', '新建 Python': 'New Python', '关闭当前会话': 'Close session', '密钥检测': 'Detect keys', '密钥生成': 'Generate key', '公钥配置': 'Install public key', '全局大小修正（%）': 'Global UI scale (%)', '执行代码': 'Run code', 'Python 多行代码（Ctrl+Enter 执行，变量保留）': 'Python code (Ctrl+Enter to run; variables persist)', '连接服务器后可新建多个命令行或 Python 会话': 'Connect to open terminal or Python sessions', '正在打开会话…': 'Opening session…', '会话已连接 · Ctrl+C 中断 · Ctrl+Shift+C/V 复制粘贴': 'Connected · Ctrl+C interrupt · Ctrl+Shift+C/V copy/paste', '会话已结束': 'Session ended', 'SSH 密钥': 'SSH keys', '正在处理密钥…': 'Processing keys…', '本机未检测到完整 SSH 密钥对': 'No complete local SSH key pair found', '请先点击密钥生成': 'Generate a key first', '粘贴多行命令': 'Paste multiple commands', '剪贴板包含多行，粘贴后可能立即执行。是否继续？': 'Multiple lines may execute immediately. Continue?', '输入队列已满，请稍后重试': 'Input queue is full; try again shortly'})
 
 ENGLISH.update({'读取来源详情': 'Read task provenance', '结束全部 NPU 任务': 'End all NPU tasks', '执行服务器': 'Execution server', '来源详情（按需读取）': 'Task provenance (on demand)'})
+
+ENGLISH.update({
+    '保存 (Ctrl+S)': 'Save (Ctrl+S)', '撤销 (Ctrl+Z)': 'Undo (Ctrl+Z)', '重做 (Ctrl+Y)': 'Redo (Ctrl+Y)',
+    '剪切': 'Cut', '复制': 'Copy', '粘贴': 'Paste', '正在读取文件…': 'Reading file…',
+    '文本编辑失败': 'Text editing failed', '无法保存': 'Cannot save', '保存修改？': 'Save changes?',
+    '当前内容尚未保存，是否保存后关闭？': 'Save your changes before closing?',
+    '文件正在读取或保存，请完成后再关闭。': 'File I/O is in progress. Please close when it finishes.',
+    '只读模式或连接已改变，请保留内容并重新打开文件。': 'Read-only mode or connection changed. Keep your changes and reopen the file.',
+    '正在保存…': 'Saving…', '双击进入文件夹或编辑文本 · 右键进行文件操作': 'Double-click folders or text files; right-click for file actions',
+    '连接后浏览 · 双击目录进入，双击文本编辑': 'Connect to browse; double-click folders or text files',
+})
+
+ENGLISH.update({
+    '本机已存在 SSH 密钥对': 'A local SSH key pair already exists',
+    '已拥有密钥，无需生成': 'Key pair already exists; no generation needed',
+    '本机密钥已就绪': 'Local key pair is ready', '公钥：': 'Public key: ', '私钥：': 'Private key: ',
+    '是否添加公钥': 'Add public key?',
+    '服务器 ~/.ssh/authorized_keys 尚未添加本机公钥。\n是否将本机公钥追加到该文件末尾？': 'The local public key is missing from ~/.ssh/authorized_keys.\nAppend it to the end of that file?',
+    '已配对：服务器 ~/.ssh/authorized_keys 已添加本机公钥': 'Paired: the server already has this public key in ~/.ssh/authorized_keys',
+    '服务器尚未添加本机公钥': 'The server does not have this public key',
+    '已取消添加公钥': 'Public key installation cancelled',
+    '公钥已添加，已配对：~/.ssh/authorized_keys': 'Public key added; paired: ~/.ssh/authorized_keys',
+})

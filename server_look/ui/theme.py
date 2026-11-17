@@ -130,6 +130,7 @@ def apply_theme(root, name='深海蓝'):
     style.map('TEntry', bordercolor=[('focus', '#40b7ff')],
               fieldbackground=[('readonly', SURFACE), ('disabled', BACKGROUND)],
               foreground=[('disabled', MUTED)])
+    checkbox_indicator(root, style, scale, RAISED, ACCENT, MUTED)
     style.configure('TCheckbutton', background=BACKGROUND, foreground=TEXT, padding=4)
     style.map('TCheckbutton', background=[('active', BACKGROUND)],
               foreground=[('disabled', MUTED)],
@@ -197,3 +198,35 @@ def apply_theme(root, name='深海蓝'):
 
     from server_look.ui.scaling import scale_layout
     scale_layout(root, style, scale)
+
+
+def checkbox_indicator(root, style, scale, background, accent, muted):
+    """Use a real tick for selected; keep ttk variable, focus and keyboard behavior."""
+    images = getattr(root, '_serverlook_check_images', None)
+    if images is None:
+        images = [tk.PhotoImage(master=root) for _ in range(4)]
+        root._serverlook_check_images = images
+        style.element_create('ServerLook.Check.indicator', 'image', images[0],
+                             ('disabled', 'selected', images[3]), ('selected', images[1]),
+                             ('disabled', images[2]), sticky='')
+        style.layout('TCheckbutton', [('Checkbutton.padding', {'sticky': 'nswe', 'children': [
+            ('ServerLook.Check.indicator', {'side': 'left', 'sticky': ''}),
+            ('Checkbutton.focus', {'side': 'left', 'sticky': 'w', 'children': [
+                ('Checkbutton.label', {'sticky': 'nswe'})]})]})])
+    size = max(14, round(18 * scale))
+    for index, photo in enumerate(images):
+        photo.configure(width=size + round(5 * scale), height=size)
+        photo.blank()
+        selected = index in (1, 3)
+        border = muted if index >= 2 else accent
+        photo.put(border, to=(0, 0, size, size))
+        photo.put(accent if selected and index < 2 else background, to=(1, 1, size - 1, size - 1))
+        if selected:
+            # Two connected strokes form a check mark, never a cross.
+            for start, end in [((.22, .51), (.43, .73)), ((.43, .73), (.80, .27))]:
+                steps = size * 2
+                for step in range(steps + 1):
+                    x = round(size * (start[0] + (end[0] - start[0]) * step / steps))
+                    y = round(size * (start[1] + (end[1] - start[1]) * step / steps))
+                    width = max(1, round(scale))
+                    photo.put(muted if index >= 2 else '#ffffff', to=(x, y, x + width + 1, y + width + 1))

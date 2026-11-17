@@ -65,6 +65,8 @@ elif action in ('term', 'kill'):
     print(json.dumps({'message': monitor.signal_tree({'pid': pid, 'ticks': ticks}, signal.SIGTERM if action == 'term' else signal.SIGKILL)}))
 elif action == 'kill_npu':
     print(json.dumps(monitor.kill_npu_tasks(request['targets'])))
+elif action == 'edit_file':
+    print(json.dumps(resources.edit_file(**request['options'])))
 elif action == 'task_details':
     print(json.dumps(monitor.task_details(int(request['pid']), int(request['ticks']))))
 elif action == 'stop':
@@ -122,6 +124,8 @@ class Connection:
         resource_source = (resources / 'server_resources.py').read_text(encoding='utf-8')
         if action == 'search':
             resource_source += '\n' + (resources / 'file_search.py').read_text(encoding='utf-8-sig')
+        if action == 'edit_file':
+            resource_source += '\n' + (resources / 'file_editor.py').read_text(encoding='utf-8-sig')
         payload = json.dumps(dict(action=action, source=source, resource_source=resource_source, **values))
         if self.session:
             return json.loads(self.session.execute("python3 -c " + shlex.quote(REMOTE), payload))

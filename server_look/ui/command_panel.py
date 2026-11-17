@@ -4,7 +4,7 @@ import threading
 from tkinter import font as tkfont
 from server_look.localization.localized_ui import tk, ttk, messagebox
 from server_look.transport.terminal import TerminalSession, python_command
-from server_look.transport.ssh_keys import detect_keys, ensure_key, configure_key
+from server_look.transport.ssh_keys import detect_keys, ensure_key, configure_key, check_key
 
 
 class CommandPanel:
@@ -174,11 +174,7 @@ class CommandPanel:
             if dirty:
                 self.render(item)
         while not self.jobs.empty():
-            generation, result = self.jobs.get_nowait()
-            self.key_busy = False
-            if generation == self.page.generation:
-                self.notice.set(result)
-                messagebox.showinfo('SSH 密钥', result, parent=self.frame)
+            self.key_result(*self.jobs.get_nowait())
         self.poll_job = self.page.root.after(50, self.poll)
 
     def key_action(self, action):
@@ -187,26 +183,70 @@ class CommandPanel:
         if action == 'configure' and not self.allowed():
             return
         pairs = detect_keys()
-        if action == 'detect':
-            result = '\n'.join(str(path) for path in pairs) or '本机未检测到完整 SSH 密钥对'
-            messagebox.showinfo('密钥检测', result, parent=self.frame)
+        if action == 'detect' or (action == 'generate' and pairs):
+            title = '密钥检测' if action == 'detect' else '密钥生成'
+            result = ('本机已存在 SSH 密钥对' if action == 'detect' else '已拥有密钥，无需生成') if pairs else '本机未检测到完整 SSH 密钥对'
+            if pairs:
+                result += '\n' + '\n\n'.join(self.key_locations(path) for path in pairs)
+            messagebox.showinfo(title, result, parent=self.frame)
             return
         if action == 'configure' and not pairs:
             messagebox.showwarning('公钥配置', '请先点击密钥生成', parent=self.frame)
             return
+        try:
+            public_key = pairs[0].read_text(encoding='utf-8').strip() if action == 'configure' else None
+        except (OSError, UnicodeError) as exc:
+            messagebox.showerror('SSH 密钥', str(exc), parent=self.frame)
+            return
+        self.start_key_job(action, self.page.generation, self.page.connection, public_key)
+
+    @staticmethod
+    def key_locations(path):
+        return f'公钥：{path}\n私钥：{path.with_suffix("")}'
+
+    def start_key_job(self, action, generation, connection, public_key):
         self.key_busy = True
-        generation, connection = self.page.generation, self.page.connection
         self.notice.set('正在处理密钥…')
         def work():
             try:
                 if action == 'generate':
-                    result = '本机公钥：' + str(ensure_key())
+                    result = '本机密钥已就绪\n' + self.key_locations(ensure_key())
+                elif action == 'configure':
+                    result = check_key(connection, public_key)
                 else:
-                    result = configure_key(connection, pairs[0].read_text(encoding='utf-8').strip())
+                    configure_key(connection, public_key)
+                    result = '公钥已添加，已配对：~/.ssh/authorized_keys'
+                error = False
             except Exception as exc:
                 result = str(exc)
-            self.jobs.put((generation, result))
+                error = True
+            self.jobs.put((action, generation, connection, public_key, result, error))
         threading.Thread(target=work, daemon=True).start()
+
+    def key_result(self, action, generation, connection, public_key, result, error):
+        self.key_busy = False
+        if generation != self.page.generation or (action != 'generate' and connection is not self.page.connection):
+            return
+        if error:
+            self.notice.set(result)
+            messagebox.showerror('SSH 密钥', result, parent=self.frame)
+            return
+        if action == 'configure':
+            if result:
+                result = '已配对：服务器 ~/.ssh/authorized_keys 已添加本机公钥'
+            else:
+                self.notice.set('服务器尚未添加本机公钥')
+                if not self.allowed():
+                    return
+                if not messagebox.askyesno('是否添加公钥', '服务器 ~/.ssh/authorized_keys 尚未添加本机公钥。\n是否将本机公钥追加到该文件末尾？', parent=self.frame):
+                    self.notice.set('已取消添加公钥')
+                    return
+                if generation != self.page.generation or connection is not self.page.connection or not self.allowed():
+                    return
+                self.start_key_job('install', generation, connection, public_key)
+                return
+        self.notice.set(result)
+        messagebox.showinfo('SSH 密钥', result, parent=self.frame)
 
     def close_current(self):
         item = self.sessions.pop(self.tabs.select(), None)

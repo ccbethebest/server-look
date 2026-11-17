@@ -8,11 +8,26 @@ import threading
 
 _KEY_LOCK = threading.Lock()
 
+_KEY_LOOKUP = '''import shlex, sys
+found = False
+with open('authorized_keys', encoding='utf-8', errors='replace') as stream:
+    for line in stream:
+        try:
+            fields = shlex.split(line, comments=True)
+        except ValueError:
+            continue
+        # OpenSSH permits one options field before the key type and blob.
+        for offset in (0, 1):
+            if fields[offset:offset + 2] == sys.argv[1:3]:
+                found = True
+sys.exit(0 if found else 1)
+'''
+
 
 def detect_keys(directory=None):
     root = Path(directory) if directory else Path.home() / '.ssh'
     return sorted(path for path in root.glob('*.pub')
-                  if path.with_suffix('').is_file())
+                  if path.is_file() and path.with_suffix('').is_file())
 
 
 def ensure_key(directory=None):
@@ -37,7 +52,7 @@ def ensure_key(directory=None):
         return target.with_suffix('.pub')
 
 
-def install_script(public_key):
+def install_script(public_key, check_only=False):
     parts = public_key.strip().split()
     if '\n' in public_key.strip() or '\r' in public_key.strip() or len(parts) < 2:
         raise ValueError('公钥格式无效')
@@ -48,6 +63,21 @@ def install_script(public_key):
     except ValueError:
         raise ValueError('公钥编码无效') from None
     key = shlex.quote(' '.join(parts))
+    # Match type/blob even when authorized_keys includes options before the key.
+    lookup = f'python3 -c {shlex.quote(_KEY_LOOKUP)} {shlex.quote(parts[0])} {shlex.quote(parts[1])}'
+    if check_only:
+        # Do not create directories/files or change permissions during detection.
+        return f'''set -eu
+[ ! -L "$HOME/.ssh" ] || {{ echo '.ssh is a symlink' >&2; exit 1; }}
+if [ ! -d "$HOME/.ssh" ]; then printf 'MISSING\\n'; exit 0; fi
+cd "$HOME/.ssh"
+[ ! -L authorized_keys ] || {{ echo 'authorized_keys is a symlink' >&2; exit 1; }}
+if [ ! -e authorized_keys ]; then printf 'MISSING\\n'; exit 0; fi
+[ -f authorized_keys ] && [ -r authorized_keys ] || {{ echo 'Cannot read authorized_keys' >&2; exit 1; }}
+status=0
+{lookup} || status=$?
+case "$status" in 0) printf 'PAIRED\\n';; 1) printf 'MISSING\\n';; *) exit "$status";; esac
+'''
     # Restrict changes to the authenticated user's account, preserve existing entries,
     # and serialize concurrent clicks/processes without rewriting the file.
     return f'''set -eu
@@ -62,17 +92,28 @@ exec 9>>authorized_keys
 flock -x 9
 chmod 600 authorized_keys
 key={key}
-if awk -v t="$(printf '%s' "$key" | cut -d ' ' -f1)" -v k="$(printf '%s' "$key" | cut -d ' ' -f2)" '$1==t && $2==k {{found=1}} END {{exit !found}}' authorized_keys; then
-    printf 'Public key already configured\\n'
-else
-    printf '\\n%s\\n' "$key" >&9
-    printf 'Public key configured\\n'
-fi
+status=0
+{lookup} || status=$?
+case "$status" in
+0) printf 'Public key already configured\\n';;
+1) printf '\\n%s\\n' "$key" >&9; printf 'Public key configured\\n';;
+*) exit "$status";;
+esac
 '''
 
 
 def configure_key(connection, public_key):
-    script = install_script(public_key)
+    return _execute(connection, install_script(public_key))
+
+
+def check_key(connection, public_key):
+    result = _execute(connection, install_script(public_key, check_only=True)).strip()
+    if result not in ('PAIRED', 'MISSING'):
+        raise RuntimeError('无法确认服务器公钥配置状态：' + result)
+    return result == 'PAIRED'
+
+
+def _execute(connection, script):
     if connection.session:
         return connection.session.execute('sh -s', script)
     result = subprocess.run(connection.args + ['sh -s'], input=script, capture_output=True,

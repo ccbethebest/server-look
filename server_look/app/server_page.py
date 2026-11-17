@@ -571,6 +571,8 @@ class ServerPage:
     def close(self):
         if self.closed:
             return
+        if not self.resources.editors.close_all():
+            return False
         self.closed = True
         self.commands.close()
         self.pending_history = None

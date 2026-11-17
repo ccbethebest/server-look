@@ -57,7 +57,7 @@ class LocalFiles:
         footer.pack(fill='x', pady=6)
         self.elapsed = StringVar()
         ttk.Label(footer, textvariable=self.elapsed).pack(side='right', padx=(6, 0))
-        self.status = StringVar(value='双击进入文件夹 · 右键进行文件操作')
+        self.status = StringVar(value='双击进入文件夹或编辑文本 · 右键进行文件操作')
         ttk.Label(footer, textvariable=self.status).pack(side='left', fill='x', expand=True)
         self.progress = ttk.Progressbar(frame, mode='indeterminate')
         self.progress.pack(fill='x')
@@ -245,6 +245,8 @@ class LocalFiles:
         if item and item.is_dir():
             self.path.set(str(item))
             self.browse()
+        elif item:
+            self.resources.editors.open(item)
         return 'break'
 
     def up(self):

@@ -98,6 +98,12 @@ class WorkspaceTests(unittest.TestCase):
                 made[-1].send.reset_mock()
                 panel.execute_cell(item)
                 made[-1].send.assert_not_called()
+                panel.tabs.select(item['frame'])
+                made[-1].close.reset_mock()
+                panel.close_current()
+                self.assertEqual(len(panel.sessions), 2)
+                made[-1].close.assert_called_once()
+                self.assertFalse(item['frame'].winfo_exists())
             finally:
                 panel.close()
                 root.destroy()

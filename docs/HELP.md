@@ -4,7 +4,7 @@
 2.17.0 新功能
 设置最前面的“全局大小修正（%）”支持 50%～200%，统一调整字体、图标、按钮间距和表格布局，并记住选择。
 “命令行控制”可新建多个交互 SSH 命令行和 Python 会话；Python 编辑区支持多行代码，Ctrl+Enter 执行，同一会话保留变量。终端 Ctrl+C 中断，Ctrl+Shift+C/V 复制粘贴。断开服务器会关闭会话。只读模式不能打开交互会话或配置远端公钥。
-密钥检测检查本机 ~/.ssh 下成对的公钥和私钥；生成时复用已有密钥，不覆盖已有文件。公钥配置把公钥追加到当前登录用户的 authorized_keys，避免重复；私钥不上传。配置其他账号需要先以该账号登录；本账号通常不需要 root 权限。
+密钥检测检查本机 ~/.ssh 下成对的公钥和私钥，并报告两者完整路径；已有密钥时，密钥生成提示“已拥有密钥，无需生成”并显示位置，不覆盖已有文件。公钥配置先只读检测当前登录用户的 ~/.ssh/authorized_keys：已有同一公钥则提示“已配对”；未添加则询问“是否添加公钥”，选“是”才在文件末尾追加，选“否”不改动服务器。追加前加锁再次检查，忽略注释差异，兼容带选项的密钥条目，避免重复；私钥不上传。配置其他账号需要先以该账号登录；本账号通常不需要 root 权限。
 任务下方显示采集到的启动命令，不等同于启动脚本正文。“读取来源详情”按需查询工作目录、可执行文件、参数中的脚本/数据路径线索、打开的文件和父进程链。SSH 来源仅在进程环境中可追溯时显示地址；无法保证识别实际操作者或其电脑名称。容器归属随任务信息显示。读取结果受登录账号权限限制。
 “结束全部 NPU 任务”仅覆盖当前快照中占用昇腾 NPU 的进程。必须在列出服务器和进程的提示中确认，默认取消。执行时重新核验 NPU 占用、PID 和启动时间，跳过新任务、退出进程、PID 复用及受保护的监控进程；权限不足会报告。使用 SIGKILL，未保存结果会丢失；Docker/systemd 等管理的服务可能自动重启，按钮不停止整个容器或修改重启策略。需要服务器 Python/Linux 支持 pidfd，避免误杀。NVIDIA GPU 任务不在此按钮范围内。
 
@@ -142,3 +142,20 @@ App 内两侧可相互拖拽：落在文件夹行时传到该文件夹，落在�
 本地工具栏集中上传、下载、取消按钮。先选择来源项再点击对应按钮，目标为对侧当前目录；拖拽到文件夹时以该文件夹为目标。底部显示已完成的顶层项数/总项数及耗时；SFTP 会额外显示当前文件的百分比，系统 SFTP 连接仅显示项数及动态进度条。取消可能保留未完整传输的文件。
 
 文件浏览：两侧导航按钮统一放大，路径栏和文件列表对齐；上传、下载、取消靠右。点击列表空白处可取消选择。服务器拖向本地时显示跟随鼠标的下载提示，按 Esc 可取消本次拖拽。
+
+
+## 2.18.0：文本编辑与勾选状态
+
+在文件浏览的本地或服务器文件列表中，双击文件夹进入目录，双击非可执行文本文件打开独立编辑窗口。可同时打开多个文件；同一路径会复用已有窗口。编辑器是纯文本编辑器，适合配置、日志、非可执行脚本等，不编辑 Word 富文本格式。
+
+快捷键：Ctrl+S 保存、Ctrl+Z 撤销、Ctrl+Y 重做、Ctrl+A 全选；Ctrl+C/X/V 复制、剪切、粘贴。支持多行编辑、水平和垂直滚动。标题带 * 表示有未保存内容。关闭窗口、服务器页或整个客户端会询问保存、放弃或取消；选择保存会先等待完成再关闭编辑窗口，随后可再次关闭服务器页或程序。读写过程中请等待完成再关闭。
+
+只编辑不超过 4 MiB 的普通文本文件，拒绝二进制文件、可执行文件和设备。保留检测到的 UTF-8、带 BOM UTF-8/UTF-16 或 GB18030 编码；换行按原文件格式保存，混用换行会统一。若文件被其他人修改，保存失败并保留窗口内容，请复制内容另存并重新打开文件。服务器连接发生变化后需重新打开远端文件；只读模式下可查看、复制，不能保存。
+
+所有复选框：勾表示选中/启用，空框表示未选中/关闭。“显示容器内全部进程”勾选后显示容器内全部进程。命令行控制的“关闭当前会话”适用于 Shell 和 Python，关闭当前标签及对应 SSH 会话。
+
+### English — 2.18.0
+
+Double-click a non-executable text file in either file pane to open a separate plain-text editor. Ctrl+S saves, Ctrl+Z undoes, Ctrl+Y redoes, Ctrl+A selects all, and standard copy/cut/paste shortcuts work. Closing an editor, server page, or app prompts to save, discard, or cancel. Saving on close finishes before closing the editor; retry closing the page/app afterwards. Files must be regular text files up to 4 MiB. Supported encodings and line endings are retained (mixed line endings are normalized). External changes prevent overwriting; reconnect and reopen remote files after connection changes. Read-only mode blocks remote saves. A tick means selected/enabled; an empty box means unselected. Close session also closes the current Python session.
+
+English — SSH keys: Detection reports both public/private key paths. Generation reuses existing pairs and reports that no generation is needed. Install first reads the signed-in account’s ~/.ssh/authorized_keys without modifying it. An existing key reports “Paired”; a missing key requires Yes/No confirmation. Only Yes appends the public key at EOF, with a locked duplicate check. Comments and authorized_keys options are supported. Private keys stay local.

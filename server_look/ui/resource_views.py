@@ -1,4 +1,4 @@
-"""Resource summary and read-only remote file explorer widgets."""
+"""Resource summary and remote file explorer widgets."""
 import posixpath
 import time
 from collections import OrderedDict
@@ -6,6 +6,7 @@ from server_look.localization.localized_ui import tk
 from server_look.localization.localized_ui import ttk
 from server_look.ui.ui_icons import file_navigation
 from server_look.files.local_files import LocalFiles
+from server_look.ui.text_editor import EditorManager
 from server_look.ui.table_sort import enable_sort
 
 
@@ -22,6 +23,7 @@ def size_text(value):
 class ResourceViews:
     def __init__(self, page):
         self.page = page
+        self.editors = EditorManager(page)
         self.hardware = page.table('硬件配置', [('key', '配置项', 230), ('value', '服务器配置', 800)])
         self.hardware.localized_columns = (0,)
         self.disks = page.table('磁盘与挂载', [('mount', '挂载目录', 250), ('device', '设备 / 远程源', 300),
@@ -57,7 +59,7 @@ class ResourceViews:
         self.files.column('#0', width=220, minwidth=100)
         enable_sort(self.files)
         self.files.bind('<Double-1>', self.enter)
-        self.hint = tk.StringVar(value='只读浏览 · 连接后点击“前往”，支持隐藏文件、目录和符号链接')
+        self.hint = tk.StringVar(value='连接后浏览 · 双击目录进入，双击文本编辑')
         footer = ttk.Frame(remote)
         footer.pack(fill='x', pady=6)
         ttk.Label(footer, textvariable=self.hint).pack(fill='x')
@@ -169,7 +171,7 @@ class ResourceViews:
                                    values=('目录链接' if entry['is_dir'] and entry['link'] else '目录' if entry['is_dir'] else '链接' if entry['link'] else '文件',
                                            '—' if entry['is_dir'] else size_text(entry['size']), entry['modified']))
             self.entries[iid] = entry
-        self.hint.set(f"{len(result['entries'])} 项 · 只读浏览" + (' · 已达到 3000 项上限，请输入子目录路径继续' if result['truncated'] else ''))
+        self.hint.set(f"{len(result['entries'])} 项 · 双击文本编辑" + (' · 已达到 3000 项上限，请输入子目录路径继续' if result['truncated'] else ''))
 
         self.files.sorting.refreshed()
         for iid, entry in self.entries.items():
@@ -186,6 +188,9 @@ class ResourceViews:
         entry = self.entries.get(selected[0]) if selected else None
         if entry and entry['is_dir']:
             self.browse(entry['path'])
+        elif entry:
+            self.editors.open(entry['path'], remote=True)
+        return 'break'
 
     def up(self):
         self.browse(posixpath.dirname(self.current or '/') or '/')

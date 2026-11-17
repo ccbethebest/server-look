@@ -156,6 +156,8 @@ class MultiServerApp:
         self.server_tabs.draw()
 
     def close_all(self):
+        if not all(page.resources.editors.close_all() for page in self.pages.values()):
+            return
         for tab, page in list(self.pages.items()):
             self.notebook.forget(tab)
             page.close()
@@ -289,6 +291,8 @@ class MultiServerApp:
         if page.busy:
             messagebox.showinfo('正在操作', '当前页面有采集或操作尚未完成，请稍后关闭。', parent=self.root)
             return
+        if not page.resources.editors.close_all():
+            return
         self.notebook.forget(selected)
         self.pages.pop(selected).close()
         self.occupancy_marks.pop(selected, None)
@@ -296,6 +300,8 @@ class MultiServerApp:
         self.update_server_tabs()
 
     def close(self):
+        if not all(page.resources.editors.close_all() for page in self.pages.values()):
+            return
         for dialog in self.dialogs:
             dialog.close()
         for page in list(self.pages.values()):

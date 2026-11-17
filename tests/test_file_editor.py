@@ -1,0 +1,187 @@
+"""Text editing preserves encoding and refuses unsafe or stale writes."""
+import os
+from pathlib import Path
+import tempfile
+import unittest
+from server_look.remote.file_editor import edit_file
+
+
+class FileEditingTests(unittest.TestCase):
+    def test_roundtrip_encoding_newlines_and_conflict(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'notes.txt'
+            for codec, bom in [('utf-8', b''), ('utf-8-sig', b''), ('gb18030', b''), ('utf-16-le', b'\xff\xfe'), ('utf-16-be', b'\xfe\xff')]:
+                path.write_bytes(bom + '你好\r\nabc\r\n'.encode(codec))
+                document = edit_file(str(path))
+                self.assertEqual(document.pop('text'), '你好\nabc\n')
+                edit_file(str(path), text='修改\n', **document)
+                self.assertEqual(path.read_bytes(), bom + '修改\r\n'.encode(codec))
+                with self.assertRaisesRegex(ValueError, '外部修改'):
+                    edit_file(str(path), text='覆盖', **document)
+                self.assertEqual(path.read_bytes(), bom + '修改\r\n'.encode(codec))
+
+    def test_remote_dispatch_read_and_save(self):
+        import json
+        import subprocess
+        import sys
+        from server_look.transport.client_core import REMOTE
+        source = Path('server_look/remote/file_editor.py').read_text(encoding='utf-8')
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'remote.txt'
+            path.write_text('before', encoding='utf-8')
+            def request(options):
+                payload = dict(action='edit_file', source='', resource_source=source, options=options)
+                result = subprocess.run([sys.executable, '-c', REMOTE], input=json.dumps(payload),
+                                        text=True, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                return json.loads(result.stdout)
+            document = request(dict(path=str(path)))
+            document.pop('text')
+            request(dict(path=str(path), text='after', **document))
+            self.assertEqual(path.read_text(encoding='utf-8'), 'after')
+
+    def test_refuse_binary_executable_and_large_files(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'notes.txt'
+            path.write_bytes(b'abc\0def')
+            with self.assertRaises(ValueError):
+                edit_file(str(path))
+            exe = Path(folder) / 'test.exe'
+            exe.write_text('text')
+            with self.assertRaisesRegex(ValueError, '可执行'):
+                edit_file(str(exe))
+            path.write_bytes(b'x' * (4 * 1024 * 1024 + 1))
+            with self.assertRaisesRegex(ValueError, '4 MiB'):
+                edit_file(str(path))
+            if os.name != 'nt':
+                path.write_text('hello')
+                path.chmod(0o755)
+                with self.assertRaisesRegex(ValueError, '可执行'):
+                    edit_file(str(path))
+
+
+class EditorWindowTests(unittest.TestCase):
+    def setUp(self):
+        import tkinter as tk
+        from types import SimpleNamespace
+        from server_look.ui.text_editor import EditorManager
+        self.root = tk.Tk()
+        self.root.withdraw()
+        self.folder = tempfile.TemporaryDirectory()
+        self.path = Path(self.folder.name) / 'notes.txt'
+        self.path.write_text('original', encoding='utf-8')
+        self.page = SimpleNamespace(root=self.root, connection=None, generation=1,
+                                    readonly=tk.BooleanVar(self.root, False))
+        self.manager = EditorManager(self.page)
+
+    def tearDown(self):
+        for editor in list(self.manager.windows):
+            editor.destroy()
+        self.root.destroy()
+        self.folder.cleanup()
+
+    def wait(self, editor):
+        import time
+        deadline = time.monotonic() + 5
+        while editor.busy and time.monotonic() < deadline:
+            self.root.update()
+            time.sleep(.01)
+        self.root.update()
+        self.assertFalse(editor.busy)
+
+    def test_undo_redo_save_and_close_confirmations(self):
+        from unittest.mock import patch
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        self.manager.open(self.path)
+        self.assertEqual(len(self.manager.windows), 1)
+        editor.text.insert('end', ' changed')
+        editor.text.edit_separator()
+        self.assertTrue(editor.dirty())
+        editor.edit('<<Undo>>')
+        self.assertEqual(editor.content(), 'original')
+        editor.edit('<<Redo>>')
+        self.assertEqual(editor.content(), 'original changed')
+        with patch('server_look.ui.text_editor.messagebox.askyesnocancel', return_value=None):
+            self.assertFalse(self.manager.close_all())
+        self.assertTrue(editor.window.winfo_exists())
+        editor.save()
+        self.wait(editor)
+        self.assertEqual(self.path.read_text(encoding='utf-8'), 'original changed')
+        self.assertFalse(editor.dirty())
+        editor.text.insert('end', ' discarded')
+        with patch('server_look.ui.text_editor.messagebox.askyesnocancel', return_value=False):
+            self.assertTrue(self.manager.close_all())
+        self.assertEqual(self.path.read_text(encoding='utf-8'), 'original changed')
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        editor.text.insert('end', ' saved on close')
+        with patch('server_look.ui.text_editor.messagebox.askyesnocancel', return_value=True):
+            self.assertFalse(editor.close())
+        self.wait(editor)
+        self.assertTrue(editor.closed)
+        self.assertEqual(self.path.read_text(encoding='utf-8'), 'original changed saved on close')
+
+    def test_remote_save_guards_and_conflict_keep_editor_open(self):
+        from unittest.mock import Mock, patch
+        connection = Mock()
+        connection.request.side_effect = lambda action, options: edit_file(**options)
+        self.page.connection = connection
+        self.manager.open(str(self.path), remote=True)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        editor.text.insert('end', ' edited')
+        for readonly, generation in [(True, 1), (False, 2)]:
+            self.page.readonly.set(readonly)
+            self.page.generation = generation
+            with patch('server_look.ui.text_editor.messagebox.showwarning') as warning:
+                editor.save()
+                warning.assert_called_once()
+            self.assertEqual(connection.request.call_count, 1)
+        self.page.generation = 1
+        self.path.write_text('external', encoding='utf-8')
+        with patch('server_look.ui.text_editor.messagebox.showerror') as error:
+            editor.save()
+            self.wait(editor)
+            error.assert_called_once()
+        self.assertEqual(self.path.read_text(encoding='utf-8'), 'external')
+        self.assertTrue(editor.dirty())
+        self.assertFalse(editor.closed)
+
+    def test_application_close_respects_editor_cancel(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        from server_look.app.desktop_app import MultiServerApp
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        editor.text.insert('end', ' dirty')
+        page = SimpleNamespace(resources=SimpleNamespace(editors=self.manager), close=Mock())
+        app = SimpleNamespace(pages={'page': page}, dialogs=[], root=Mock())
+        with patch('server_look.ui.text_editor.messagebox.askyesnocancel', return_value=None):
+            MultiServerApp.close(app)
+        app.root.destroy.assert_not_called()
+        page.close.assert_not_called()
+
+    def test_tick_indicates_boolean_selection(self):
+        from tkinter import ttk
+        import tkinter as tk
+        from server_look.ui.theme import apply_theme
+        apply_theme(self.root)
+        value = tk.BooleanVar(self.root, False)
+        check = ttk.Checkbutton(self.root, variable=value)
+        check.invoke()
+        self.assertTrue(value.get())
+        self.assertIn('selected', check.state())
+        check.invoke()
+        self.assertFalse(value.get())
+        self.assertNotIn('selected', check.state())
+        self.assertIn('ServerLook.Check.indicator', str(ttk.Style(self.root).layout('TCheckbutton')))
+        blank, selected, _, _ = self.root._serverlook_check_images
+        self.assertNotEqual(blank.get(8, 12), selected.get(8, 12))
+
+
+if __name__ == '__main__':
+    unittest.main()
