@@ -179,6 +179,10 @@ python -m compileall -q server_look tests tools
 - 新增终端、缩放、密钥和 NPU 批量终止回归测试。真实 SSH/PTTY、权限及 NPU 驱动行为需在目标 Linux 服务器补充验收。
 
 
+## 2.19.3 文本编辑器行号
+
+`ui/line_numbers.py` 使用独立 Canvas 绘制可见行号，通过 Text 的滚动、修改和布局事件在 Tk 主线程合并重绘。行号与文件内容分离，不参与复制、撤销或保存；宽度按总行数和当前文本字体计算。`tests/test_file_editor.py` 覆盖滚动定位、字号、编辑撤销、重做及保存内容。
+
 ## 2.18.0 文本编辑
 
 - `ui/text_editor.py`：独立窗口、编辑快捷键、未保存确认；后台线程通过队列返回结果，Tk 主线程轮询。EditorManager 纳入页面/程序关闭流程。

@@ -3,6 +3,7 @@ import queue
 import threading
 from server_look.localization.localized_ui import tk, ttk, messagebox
 from server_look.remote.file_editor import edit_file
+from server_look.ui.line_numbers import LineNumbers
 
 
 class EditorManager:
@@ -74,15 +75,17 @@ class TextEditor:
         self.text = tk.Text(area, undo=True, autoseparators=True, maxundo=-1, wrap='none')
         vertical = ttk.Scrollbar(area, command=self.text.yview)
         horizontal = ttk.Scrollbar(area, orient='horizontal', command=self.text.xview)
-        self.text.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
-        self.text.grid(row=0, column=0, sticky='nsew')
-        vertical.grid(row=0, column=1, sticky='ns')
-        horizontal.grid(row=1, column=0, sticky='ew')
+        self.text.configure(xscrollcommand=horizontal.set)
+        self.text.grid(row=0, column=1, sticky='nsew')
+        vertical.grid(row=0, column=2, sticky='ns')
+        horizontal.grid(row=1, column=1, sticky='ew')
         area.rowconfigure(0, weight=1)
-        area.columnconfigure(0, weight=1)
+        area.columnconfigure(1, weight=1)
         self.status = tk.StringVar(master=self.window, value='正在读取文件…')
         ttk.Label(self.window, textvariable=self.status, padding=6).pack(fill='x')
         self.text.bind('<<Modified>>', self.changed)
+        self.line_numbers = LineNumbers(area, self.text, vertical)
+        self.line_numbers.grid(row=0, column=0, sticky='ns')
         self.text.bind('<Control-s>', self.save)
         self.text.bind('<Control-S>', self.save)
         self.text.bind('<Control-z>', lambda event: self.edit('<<Undo>>'))

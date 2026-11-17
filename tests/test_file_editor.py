@@ -91,6 +91,45 @@ class EditorWindowTests(unittest.TestCase):
         self.root.update()
         self.assertFalse(editor.busy)
 
+    def test_line_numbers_follow_scroll_and_font(self):
+        self.path.write_text('\n'.join('text ' + str(i) for i in range(1, 301)), encoding='utf-8')
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        gutter = editor.line_numbers
+        self.assertEqual(gutter.itemcget(gutter.find_all()[0], 'text'), '1')
+        self.assertLess(len(gutter.find_all()), 100)
+        editor.text.yview('120.0')
+        self.root.update()
+        first = gutter.find_all()[0]
+        line = gutter.itemcget(first, 'text')
+        self.assertEqual(line, editor.text.index('@0,0').split('.')[0])
+        self.assertEqual(gutter.coords(first)[1], editor.text.dlineinfo(line + '.0')[1])
+        old_width = gutter.winfo_width()
+        editor.text.configure(font=('Consolas', 24))
+        self.root.update()
+        self.assertGreater(gutter.winfo_width(), old_width)
+
+    def test_line_numbers_update_on_edit_undo_and_do_not_enter_saved_text(self):
+        self.manager.open(self.path)
+        editor = self.manager.windows[0]
+        self.wait(editor)
+        editor.text.insert('end-1c', '\nsecond\nthird')
+        editor.text.edit_separator()
+        self.root.update()
+        labels = lambda: [editor.line_numbers.itemcget(item, 'text')
+                          for item in editor.line_numbers.find_all()]
+        self.assertEqual(labels(), ['1', '2', '3'])
+        editor.edit('<<Undo>>')
+        self.root.update()
+        self.assertEqual(labels(), ['1'])
+        editor.edit('<<Redo>>')
+        self.root.update()
+        self.assertEqual(labels(), ['1', '2', '3'])
+        editor.save()
+        self.wait(editor)
+        self.assertEqual(self.path.read_text(encoding='utf-8'), 'original\nsecond\nthird')
+
     def test_find_unicode_literal_wrap_backwards_and_edited_content(self):
         self.manager.open(self.path)
         editor = self.manager.windows[0]
