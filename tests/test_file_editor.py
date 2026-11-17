@@ -40,7 +40,7 @@ class FileEditingTests(unittest.TestCase):
             request(dict(path=str(path), text='after', **document))
             self.assertEqual(path.read_text(encoding='utf-8'), 'after')
 
-    def test_refuse_binary_executable_and_large_files(self):
+    def test_refuse_binary_and_large_files_but_accept_text_scripts(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'notes.txt'
             path.write_bytes(b'abc\0def')
@@ -48,16 +48,14 @@ class FileEditingTests(unittest.TestCase):
                 edit_file(str(path))
             exe = Path(folder) / 'test.exe'
             exe.write_text('text')
-            with self.assertRaisesRegex(ValueError, '可执行'):
-                edit_file(str(exe))
+            self.assertEqual(edit_file(str(exe))['text'], 'text')
             path.write_bytes(b'x' * (4 * 1024 * 1024 + 1))
             with self.assertRaisesRegex(ValueError, '4 MiB'):
                 edit_file(str(path))
             if os.name != 'nt':
                 path.write_text('hello')
                 path.chmod(0o755)
-                with self.assertRaisesRegex(ValueError, '可执行'):
-                    edit_file(str(path))
+                self.assertEqual(edit_file(str(path))['text'], 'hello')
 
 
 class EditorWindowTests(unittest.TestCase):

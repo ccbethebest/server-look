@@ -30,6 +30,9 @@ class CommandPanel:
             widget = ttk.Button(bar, text=title, command=command)
             widget.pack(side='left', padx=3)
             self.actions.append(widget)
+        self.visual_editor = tk.BooleanVar(master=self.frame, value=True)
+        ttk.Checkbutton(self.frame, text='使用可视化文本编辑（vi/vim，默认开启）',
+                        variable=self.visual_editor).pack(anchor='w', padx=6, pady=3)
         self.notice = tk.StringVar(value='连接服务器后可新建多个命令行或 Python 会话')
         ttk.Label(self.frame, textvariable=self.notice, style='Muted.TLabel').pack(fill='x')
         self.tabs = ttk.Notebook(self.frame)
@@ -172,7 +175,7 @@ class CommandPanel:
         entry = item['command_entry']
         command = entry.get()
         if item['editor_bridge']:
-            command = editor_command(command, item['editor_bridge'].token)
+            command = editor_command(command, item['editor_bridge'].token, self.visual_editor.get())
         if self.transmit(item, command + '\r'):
             entry.delete(0, 'end')
         return 'break'
@@ -192,7 +195,7 @@ class CommandPanel:
                 and item['screen']._primary is None):
             line = item['shell_line']
             if line.matches(item['screen']):
-                command = editor_command(line.text, item['editor_bridge'].token)
+                command = editor_command(line.text, item['editor_bridge'].token, self.visual_editor.get())
                 if command != line.text:
                     text = '\x05\x15' + command + '\r'
         if text:
@@ -310,8 +313,8 @@ class CommandPanel:
                 self.notice.set('会话已连接 · Ctrl+C 中断 · Ctrl+Shift+C/V 复制粘贴')
                 self.resize(item)
                 if item['editor_bridge']:
-                    self.send(item, editor_setup(item['editor_bridge'].token) + '\r')
-                    self.notice.set('会话已连接 · vim/vi 文件名打开图形编辑器 · command vim 使用原生终端')
+                    self.send(item, editor_setup(item['editor_bridge'].token, self.visual_editor.get()) + '\r')
+                    self.notice.set('会话已连接 · vi/vim 文本编辑方式由上方勾选项控制（新输入命令生效）')
             elif kind == 'data':
                 if item['editor_bridge']:
                     for event, payload in item['editor_bridge'].feed_events(value):

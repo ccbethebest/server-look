@@ -7,7 +7,6 @@ import stat
 import subprocess
 
 MAX_TEXT_BYTES = 4 * 1024 * 1024
-EXECUTABLE_SUFFIXES = {'.exe', '.com', '.dll', '.bat', '.cmd', '.ps1', '.msi', '.lnk', '.scr'}
 
 
 def editor_identity():
@@ -70,8 +69,6 @@ def checked_file(stream, path):
     info = os.fstat(stream.fileno())
     if not stat.S_ISREG(info.st_mode):
         raise ValueError('只能编辑普通文本文件')
-    if Path(path).suffix.lower() in EXECUTABLE_SUFFIXES or (os.name != 'nt' and info.st_mode & 0o111):
-        raise ValueError('不支持编辑可执行文件')
     if info.st_size > MAX_TEXT_BYTES:
         raise ValueError('文本文件超过 4 MiB，请使用外部编辑器')
     return stream.read(MAX_TEXT_BYTES + 1)
@@ -100,6 +97,21 @@ def decode_text(raw):
 
 def edit_file(path, text=None, encoding=None, newline=None, digest=None):
     # Do not follow links to devices/FIFOs, which could block a worker indefinitely.
+    if not os.path.lexists(path):
+        if text is None:
+            return dict(text='', encoding='utf-8', newline='\n', digest=None)
+        if digest is not None:
+            raise ValueError('文件已被外部删除，请另行保留编辑内容后重新打开')
+        output = encode_text(text, encoding, newline)
+        # Exclusive creation prevents overwriting a file created since opening.
+        try:
+            with open(path, 'xb') as stream:
+                stream.write(output)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except FileExistsError:
+            raise ValueError('文件已被外部创建，请重新打开') from None
+        return dict(digest=hashlib.sha256(output).hexdigest())
     if not stat.S_ISREG(os.stat(path).st_mode):
         raise ValueError('只能编辑普通文本文件')
     with open(path, 'rb' if text is None else 'r+b') as stream:
@@ -108,17 +120,22 @@ def edit_file(path, text=None, encoding=None, newline=None, digest=None):
             return decode_text(raw)
         if hashlib.sha256(raw).hexdigest() != digest:
             raise ValueError('文件已被外部修改，请另行保留编辑内容后重新打开')
-        if encoding not in ('utf-8', 'utf-8-sig', 'gb18030', 'utf-16-le-bom', 'utf-16-be-bom') or newline not in ('\n', '\r\n', '\r'):
-            raise ValueError('无效的文本编码或换行格式')
-        codec = encoding[:-4] if encoding.endswith('-bom') else encoding
-        output = text.replace('\n', newline).encode(codec)
-        if encoding.endswith('-bom'):
-            output = (b'\xff\xfe' if codec == 'utf-16-le' else b'\xfe\xff') + output
-        if len(output) > MAX_TEXT_BYTES:
-            raise ValueError('保存内容超过 4 MiB')
+        output = encode_text(text, encoding, newline)
         stream.seek(0)
         stream.write(output)
         stream.truncate()
         stream.flush()
         os.fsync(stream.fileno())
         return dict(digest=hashlib.sha256(output).hexdigest())
+
+
+def encode_text(text, encoding, newline):
+    if encoding not in ('utf-8', 'utf-8-sig', 'gb18030', 'utf-16-le-bom', 'utf-16-be-bom') or newline not in ('\n', '\r\n', '\r'):
+        raise ValueError('无效的文本编码或换行格式')
+    codec = encoding[:-4] if encoding.endswith('-bom') else encoding
+    output = text.replace('\n', newline).encode(codec)
+    if encoding.endswith('-bom'):
+        output = (b'\xff\xfe' if codec == 'utf-16-le' else b'\xfe\xff') + output
+    if len(output) > MAX_TEXT_BYTES:
+        raise ValueError('保存内容超过 4 MiB')
+    return output

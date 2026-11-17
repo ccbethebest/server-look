@@ -105,7 +105,7 @@ class SessionEditorFixTests(TerminalRecoveryTests):
         self.assertEqual(text, 'READY')
 
     def test_native_editor_and_other_commands_are_preserved(self):
-        for command in ('command vim notes.txt', 'vim -R notes.txt', 'pwd', 'vim a b',
+        for command in ('command vim notes.txt', 'pwd',
                         'cd /tmp', 'export NAME=value', 'ls -la | head -n 3',
                         'printf hello > notes.txt', 'cat < notes.txt', 'sleep 1 &',
                         'false; echo $?', 'echo "中文"', 'sudo whoami', 'docker ps'):
