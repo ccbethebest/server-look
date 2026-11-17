@@ -43,9 +43,11 @@ class TerminalSession:
                     if path.exists():
                         client.load_host_keys(str(path))
                 args = self.connection.args
+                identities = [args[index + 1] for index, value in enumerate(args[:-1]) if value == '-i']
                 client.connect(hostname=args[-1], username=args[args.index('-l') + 1],
                                port=int(args[args.index('-p') + 1]), timeout=10,
-                               auth_timeout=10, banner_timeout=10)
+                               auth_timeout=10, banner_timeout=10,
+                               key_filename=identities or None)
                 client.get_transport().set_keepalive(5)
             if self.stop.is_set():
                 return

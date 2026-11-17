@@ -75,10 +75,14 @@ class EditorWindowTests(unittest.TestCase):
         self.manager = EditorManager(self.page)
 
     def tearDown(self):
+        import gc
         for editor in list(self.manager.windows):
             editor.destroy()
         self.root.destroy()
         self.folder.cleanup()
+        # Release old Tcl interpreters on their owning thread before the next worker starts.
+        del self.manager, self.page, self.root
+        gc.collect()
 
     def wait(self, editor):
         import time

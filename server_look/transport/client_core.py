@@ -11,6 +11,7 @@ import sys
 
 from server_look.app.settings import SSH_REQUEST_TIMEOUT_SECONDS
 from server_look.transport.directory_channel import DirectoryChannel
+from server_look.transport.ssh_keys import detect_keys
 
 REMOTE = """
 import json, sys, signal, types
@@ -92,7 +93,12 @@ def connection_args(host, user, port):
     executable = str(native) if native.exists() else shutil.which('ssh')
     if not executable:
         raise RuntimeError('未安装 OpenSSH 客户端')
+    ssh_root = Path.home() / '.ssh'
+    known_hosts = ' '.join(f'"{(ssh_root / name).as_posix()}"'
+                          for name in ('known_hosts', 'server_look_known_hosts'))
+    identities = [value for public in detect_keys() for value in ('-i', str(public.with_suffix('')))]
     return [executable, '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+            '-o', 'UserKnownHostsFile=' + known_hosts, *identities,
             '-o', 'ConnectTimeout=10', '-o', 'ServerAliveInterval=5',
             '-o', 'ServerAliveCountMax=2', '-p', str(port), '-l', user, host]
 

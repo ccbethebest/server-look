@@ -1,3 +1,10 @@
+## 2.18.2 修复与更新
+
+- 公钥连接同时读取系统 `known_hosts` 和工具已确认的 `server_look_known_hosts`，修复密码连接已信任、公钥连接仍提示主机密钥未知的问题；命令行会话使用相同的本机密钥对。
+- 兼容终端私有光标位置查询，避免解析异常导致所有会话停止刷新；单个会话异常不会阻止其他会话显示。
+- “断开”旁新增“关闭”按钮，关闭对应服务器页，保留未保存文件确认和会话清理。
+- Key login reuses both standard and app-confirmed host keys, including custom-named local key pairs. Terminal private cursor queries no longer stop polling; failures are isolated per session. A Close button closes the server tab with existing unsaved-file confirmation.
+
 ## 2.18.1 修复
 
 - 修复 Windows OpenSSH 公钥配对时的 `set: invalid option`：以 UTF-8 字节传输 LF 脚本，避免 Windows 文本管道转换为 CRLF。服务器的授权用户提示属于登录横幅。
@@ -11,7 +18,7 @@
 - 密钥检测/生成报告公钥与私钥位置，复用已有密钥；公钥配置先只读检查，已配对直接提示，未配对经“是/否”确认后追加。
 - 保留 2.16.1、2.17.0。编辑器限制 4 MiB，保留 UTF-8/BOM、UTF-16 BOM 或 GB18030 编码及常规换行格式；服务器只读模式阻止保存，文件外部修改会阻止覆盖。
 
-# 服务器看看 2.18.1
+# 服务器看看 2.18.2
 
 2.17.0：新增多会话 SSH 命令行、独立 Python 多行执行、SSH 密钥管理、全局界面缩放；扩大任务详情，按需查询启动来源，并支持确认后结束当前占用 NPU 的任务。保留 2.16.1。
 

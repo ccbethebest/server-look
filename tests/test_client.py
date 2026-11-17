@@ -30,6 +30,24 @@ class ClientTests(unittest.TestCase):
         finally:
             app.close()
 
+    def test_close_button_targets_own_page_and_respects_unsaved_cancel(self):
+        root = tk.Tk()
+        root.withdraw()
+        app = MultiServerApp(root)
+        try:
+            app.add_server('example.test')
+            first_id, second_id = app.pages
+            first = app.pages[first_id]
+            with patch.object(first.resources.editors, 'close_all', return_value=False):
+                first.close_button.invoke()
+                self.assertIn(first_id, app.pages)
+            with patch.object(first.resources.editors, 'close_all', return_value=True):
+                first.close_button.invoke()
+            self.assertNotIn(first_id, app.pages)
+            self.assertIn(second_id, app.pages)
+        finally:
+            app.close()
+
     def test_directory_requests_reuse_one_ssh_process(self):
         with patch('server_look.transport.directory_channel.subprocess.Popen') as launch:
             process = launch.return_value

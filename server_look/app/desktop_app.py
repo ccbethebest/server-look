@@ -223,7 +223,8 @@ class MultiServerApp:
         frame = ttk.Frame(self.notebook)
         self.notebook.add(frame, text=host or '未连接')
         page = ServerPage(frame, embedded=True, host=host,
-                   on_connect=lambda address: self.rename_tab(frame, address))
+                   on_connect=lambda address: self.rename_tab(frame, address),
+                   on_close=lambda: self.close_page(str(frame)))
         self.pages[str(frame)] = page
         self.update_server_tabs()
         self.configure_page(page)
@@ -283,8 +284,8 @@ class MultiServerApp:
                 continue
             page.connect()
 
-    def close_page(self):
-        selected = self.notebook.select()
+    def close_page(self, selected=None):
+        selected = selected or self.notebook.select()
         if not selected:
             return
         page = self.pages[selected]

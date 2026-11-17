@@ -1,4 +1,14 @@
-服务器看看 2.18.1 使用说明
+服务器看看 2.18.2 使用说明
+
+2.18.2：连接、刷新、断开旁新增“关闭”，关闭当前服务器页；未保存编辑内容时仍询问保存/放弃/取消。命令行支持私有光标位置查询，并隔离单个会话的显示错误。
+
+“命令行控制”通过 SSH 伪终端启动服务器端 Shell；命令、当前目录和环境变量均属于该服务器上的独立会话，权限与登录账号一致。可输入 `hostname`、`whoami`、`pwd` 核对。Python 页签启动服务器上的 `python3`，需要远端已安装；它不是本机 Python。终端显示兼容性仍与 Xshell 有差异，不能保证所有全屏交互程序完全一致。
+
+Command tabs open remote shells over SSH PTYs. Commands, working directories, environment variables and account permissions belong to the remote session. Use hostname, whoami and pwd to check. Python tabs require python3 on the server. Terminal display compatibility may differ from Xshell for full-screen applications.
+
+若公钥连接报 `No ED25519 host key is known ... strict checking`，表示服务器身份尚未获得信任，并非登录公钥被拒绝。先使用密码连接，核对并确认主机指纹，完成“公钥配置”，再切换为公钥连接。2.18.2 统一读取 `~/.ssh/known_hosts` 与 `~/.ssh/server_look_known_hosts`；生成密钥不会自动配置远端。指纹发生变化时仍会阻止连接，应先向管理员核实。顶部连接失败状态旁的“失败原因”可查看完整错误。
+
+2.18.2: Close beside Disconnect closes the server tab with unsaved-file confirmation. Terminal private cursor queries are supported and display errors are isolated. An unknown host key error occurs before user authentication: connect with a password, verify and confirm the host fingerprint, configure the public key, then select key login. Both standard and app-confirmed known-host files are used. Changed host keys remain blocked. Generating a key alone does not install it remotely.
 
 2.18.1 修复 Windows OpenSSH 公钥配置的换行兼容问题。若显示 `Authorized users only. All activities may be monitored and reported.`，这是服务器登录提示；`set: invalid option` 才是脚本执行错误，旧版本应更新至 2.18.1 后重试。
 

@@ -1,5 +1,15 @@
 # 开发与维护说明
 
+## 2.18.2 连接与终端修复 / Connection and terminal fixes
+
+- Native OpenSSH reads both known-host files using quoted paths; detected key pairs are explicitly passed to OpenSSH and Paramiko terminal connections. Strict checking remains enabled.
+- `transport/terminal_screen.py` handles xterm private cursor position reports unsupported by the base pyte handler. `CommandPanel` isolates failed sessions so one parser exception cannot stop every tab's refresh loop.
+- Server-page Close delegates to the existing application tab lifecycle, including busy checks, unsaved editor confirmation and terminal cleanup.
+- Regression coverage: native loopback SSH with app-only trust and a custom-named key under a path containing spaces; private cursor replies and continued output; parser failure isolation; closing the correct server page and cancelling for unsaved files.
+- 本地真实 Vim 临时文件编辑、保存、退出及输出重放通过。用户实际服务器上的 Vim 与公钥登录尚需现场验证；不自动接受未知或变化的服务器指纹。
+- 回归入口为每个模块使用临时 APPDATA，避免读取或改写个人设置。多 Tk 根窗口测试在主线程回收旧解释器，防止后续文件工作线程触发 Tcl 跨线程析构。
+- Tests use temporary APPDATA per module. GUI fixtures collect retired Tcl interpreters on the owning thread before another file worker starts.
+
 ## 2.18.1 SSH 脚本换行修复 / SSH line-ending fix
 
 - OpenSSH 子进程的 shell 脚本必须使用 UTF-8 字节输入，再手动解码输出，避免 Windows 文本管道将 LF 转为 CRLF；Paramiko 字节传输不受此问题影响。

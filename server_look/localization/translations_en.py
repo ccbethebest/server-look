@@ -311,6 +311,7 @@ ENGLISH.update({
 
 ENGLISH.update({
     '本机已存在 SSH 密钥对': 'A local SSH key pair already exists',
+    '终端显示失败，请新建会话：{0}': 'Terminal display failed; open a new session: {0}',
     '已拥有密钥，无需生成': 'Key pair already exists; no generation needed',
     '本机密钥已就绪': 'Local key pair is ready', '公钥：': 'Public key: ', '私钥：': 'Private key: ',
     '是否添加公钥': 'Add public key?',

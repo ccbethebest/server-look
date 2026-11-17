@@ -1,7 +1,9 @@
 """Run each test module in its own process to isolate Tk state."""
 from pathlib import Path
+import os
 import subprocess
 import sys
+import tempfile
 
 
 def main():
@@ -12,7 +14,10 @@ def main():
     failed = []
     for path in modules:
         print(f"Testing {path.stem}", flush=True)
-        result = subprocess.run([sys.executable, "-m", "unittest", f"tests.{path.stem}"], cwd=root, timeout=120)
+        with tempfile.TemporaryDirectory(prefix="serverlook-test-settings-") as settings:
+            environment = dict(os.environ, APPDATA=settings)
+            result = subprocess.run([sys.executable, "-m", "unittest", f"tests.{path.stem}"],
+                                    cwd=root, env=environment, timeout=120)
         if result.returncode:
             failed.append(path.stem)
     print(f"{len(modules)} modules; failures: {', '.join(failed) or 'none'}")

@@ -51,6 +51,7 @@ class CommandPanel:
         if not self.allowed():
             return
         import pyte
+        from server_look.transport.terminal_screen import TerminalScreen
         self.serial += 1
         frame = ttk.Frame(self.tabs)
         self.tabs.add(frame, text=f'{"Python" if python else "Shell"} {self.serial}')
@@ -60,7 +61,7 @@ class CommandPanel:
         scroll.pack(side='right', fill='y')
         output.configure(yscrollcommand=scroll.set)
         output.pack(fill='both', expand=True)
-        screen = pyte.HistoryScreen(100, 28, history=1000)
+        screen = TerminalScreen(100, 28, history=1000)
         stream = pyte.Stream(screen)
         session = TerminalSession(self.page.connection, python=python)
         item = {'frame': frame, 'output': output, 'screen': screen, 'stream': stream,
@@ -155,27 +156,38 @@ class CommandPanel:
         if self.closed:
             return
         for item in list(self.sessions.values()):
-            dirty = False
-            for _ in range(32):
-                try:
-                    kind, value = item['session'].events.get_nowait()
-                except queue.Empty:
-                    break
-                if kind == 'ready':
-                    item['ready'] = True
-                    self.notice.set('会话已连接 · Ctrl+C 中断 · Ctrl+Shift+C/V 复制粘贴')
-                    self.resize(item)
-                elif kind == 'data':
-                    item['stream'].feed(value)
-                    dirty = True
-                else:
-                    item['ended'] = True
-                    self.notice.set(value)
-            if dirty:
-                self.render(item)
+            if item['ended']:
+                continue
+            try:
+                self.poll_session(item)
+            except Exception as exc:
+                item['ended'] = True
+                item['session'].close()
+                self.notice.set(f'终端显示失败，请新建会话：{exc}')
         while not self.jobs.empty():
             self.key_result(*self.jobs.get_nowait())
         self.poll_job = self.page.root.after(50, self.poll)
+
+    def poll_session(self, item):
+        dirty = False
+        for _ in range(32):
+            try:
+                kind, value = item['session'].events.get_nowait()
+            except queue.Empty:
+                break
+            if kind == 'ready':
+                item['ready'] = True
+                self.notice.set('会话已连接 · Ctrl+C 中断 · Ctrl+Shift+C/V 复制粘贴')
+                self.resize(item)
+            elif kind == 'data':
+                item['stream'].feed(value)
+                dirty = True
+            else:
+                item['ended'] = True
+                self.notice.set(value)
+                break
+        if dirty:
+            self.render(item)
 
     def key_action(self, action):
         if self.key_busy:

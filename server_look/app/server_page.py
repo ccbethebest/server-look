@@ -17,10 +17,11 @@ from server_look.app.settings import APP_NAME, APP_VERSION, POLL_INTERVAL_MS, RE
 
 class ServerPage:
     """One server: widgets, snapshot, selection and background request lifecycle."""
-    def __init__(self, root, embedded=False, host='', on_connect=None):
+    def __init__(self, root, embedded=False, host='', on_connect=None, on_close=None):
         self.root = root
         self.closed = False
         self.on_connect = on_connect
+        self.on_close = on_close or self.close
         self.connection = None
         self.connected_record = None
         self.pending_history = None
@@ -62,6 +63,8 @@ class ServerPage:
         icon_button(toolbar, text='连接', style='Capsule.TButton', command=self.show_connection_dialog).pack(side='left')
         icon_button(toolbar, text='刷新', style='Capsule.TButton', command=self.refresh).pack(side='left', padx=5)
         icon_button(toolbar, text='断开', style='Capsule.TButton', command=self.disconnect).pack(side='left')
+        self.close_button = icon_button(toolbar, text='关闭', style='Capsule.TButton', command=self.on_close)
+        self.close_button.pack(side='left', padx=5)
         self.idle_button = icon_button(toolbar, text='查空闲', style='Capsule.TButton', command=lambda: self.root.winfo_toplevel()._serverlook_app.query_idle())
         self.idle_button.pack(side='left', padx=(5, 0))
         self.connection_badge = ttk.Label(toolbar, textvariable=self.connection_state, style='Muted.TLabel')
