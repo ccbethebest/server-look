@@ -1,5 +1,11 @@
 # 开发与维护说明
 
+## 2.18.1 SSH 脚本换行修复 / SSH line-ending fix
+
+- OpenSSH 子进程的 shell 脚本必须使用 UTF-8 字节输入，再手动解码输出，避免 Windows 文本管道将 LF 转为 CRLF；Paramiko 字节传输不受此问题影响。
+- `test_openssh_receives_lf_script_despite_windows_text_translation` 用真实子进程读取原始 stdin，拒绝 CR，并验证 stderr 登录横幅不影响成功的状态结果。
+- Send shell scripts to OpenSSH as UTF-8 bytes and decode responses explicitly. Windows text-mode pipes otherwise convert LF to CRLF. The regression uses a real subprocess to reject CR bytes and tolerate a login banner on stderr.
+
 ## 目录与职责
 
 ```text

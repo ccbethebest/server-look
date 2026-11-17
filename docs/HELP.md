@@ -1,4 +1,8 @@
-服务器看看 2.17.0 使用说明
+服务器看看 2.18.1 使用说明
+
+2.18.1 修复 Windows OpenSSH 公钥配置的换行兼容问题。若显示 `Authorized users only. All activities may be monitored and reported.`，这是服务器登录提示；`set: invalid option` 才是脚本执行错误，旧版本应更新至 2.18.1 后重试。
+
+2.18.1 fixes line-ending compatibility for public-key pairing via Windows OpenSSH. The authorized-users message is a server login banner; `set: invalid option` indicates script failure. Update older versions to 2.18.1 and retry.
 
 
 2.17.0 新功能

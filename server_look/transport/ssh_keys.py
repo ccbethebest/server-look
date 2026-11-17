@@ -116,9 +116,10 @@ def check_key(connection, public_key):
 def _execute(connection, script):
     if connection.session:
         return connection.session.execute('sh -s', script)
-    result = subprocess.run(connection.args + ['sh -s'], input=script, capture_output=True,
-                            encoding='utf-8', errors='replace', timeout=40,
+    # Text-mode pipes translate LF to CRLF on Windows; sh requires literal LF.
+    result = subprocess.run(connection.args + ['sh -s'], input=script.encode('utf-8'), capture_output=True,
+                            timeout=40,
                             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
     if result.returncode:
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
-    return result.stdout
+        raise RuntimeError((result.stderr.strip() or result.stdout.strip()).decode('utf-8', errors='replace'))
+    return result.stdout.decode('utf-8', errors='replace')

@@ -13,6 +13,15 @@ from server_look.ui.command_panel import CommandPanel
 
 
 class KeyTransportTests(unittest.TestCase):
+    def test_openssh_receives_lf_script_despite_windows_text_translation(self):
+        receiver = (
+            "import sys; payload = sys.stdin.buffer.read(); "
+            "sys.stderr.write('Authorized users only. All activities may be monitored and reported.\\n'); "
+            "sys.exit('CRLF reached remote shell') if b'\\r' in payload else print('PAIRED')"
+        )
+        connection = SimpleNamespace(session=None, args=[sys.executable, '-c', receiver])
+        self.assertTrue(check_key(connection, 'ssh-ed25519 AAAA local'))
+
     def test_detection_is_read_only_and_uses_existing_connection(self):
         connection = SimpleNamespace(session=Mock())
         connection.session.execute.return_value = 'PAIRED\n'
