@@ -1,3 +1,10 @@
+## 2.18.4 命令输入与刷新 / Command input and refresh
+
+- `ServerPage.tick` 在命令行页面跳过监控 snapshot，其余页面维持原周期，手动刷新和已有请求的收尾不受影响；`CommandPanel.poll` 只消费 SSH 事件，收到输出才重绘终端。
+- Shell 输入栏使用同一会话的发送队列；只有成功入队后才清空。连接中、结束、只读、队列满均显示原因，避免静默丢弃按键。Ctrl+Q 按钮发送标准 XON，不修改远端配置。
+- `test_command_usability.py` 验证映射后的 Tk 按键、输入栏回车和自动刷新策略；`test_terminal_ssh_input.py` 使用本地 Paramiko 加密 SSH 通道与测试 Shell，验证 Tk 输入→队列→SSH→回显→终端、执行、中断和关闭。它不替代用户实际 Linux 服务器或原生 vim 的验收。
+- Monitoring snapshots pause on the command page. SSH event consumption continues without periodic terminal redraws. Tests cover mapped Tk events and a real encrypted local SSH channel with a test shell; this does not claim validation against the user's Linux server or native vim.
+
 ## 2.18.3 命令行图形编辑 / Graphical editing from the shell
 
 - 新建命令行后，输入 `vim 文件名` 或 `vi 文件名`，直接打开与文件浏览相同的独立文本编辑窗口；按命令行当前目录解析路径，支持空格与中文文件名。Ctrl+S 保存、Ctrl+Z 撤销，未保存关闭时询问保存/放弃/取消。

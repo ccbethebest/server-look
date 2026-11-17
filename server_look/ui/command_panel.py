@@ -64,6 +64,12 @@ class CommandPanel:
         scroll.pack(side='right', fill='y')
         output.configure(yscrollcommand=scroll.set)
         output.pack(fill='both', expand=True)
+        if not python:
+            command_bar = ttk.Frame(frame)
+            command_bar.pack(side='bottom', fill='x', pady=4)
+            ttk.Label(command_bar, text='命令输入').pack(side='left', padx=4)
+            command_entry = ttk.Entry(command_bar)
+            command_entry.pack(side='left', fill='x', expand=True)
         screen = TerminalScreen(100, 28, history=1000)
         stream = pyte.Stream(screen)
         session = TerminalSession(self.page.connection, python=python)
@@ -74,6 +80,13 @@ class CommandPanel:
         # pyte answers terminal status queries through the same SSH input queue.
         screen.write_process_input = session.send
         self.sessions[str(frame)] = item
+        if not python:
+            item['command_entry'] = command_entry
+            command_entry.bind('<Return>', lambda event: self.execute_command(item))
+            command_entry.bind('<Control-c>', lambda event: self.send(item, '\x03'))
+            ttk.Button(command_bar, text='执行', command=lambda: self.execute_command(item)).pack(side='left', padx=4)
+            ttk.Button(command_bar, text='中断 Ctrl+C', command=lambda: self.send(item, '\x03')).pack(side='left')
+            ttk.Button(command_bar, text='恢复显示 Ctrl+Q', command=lambda: self.send(item, '\x11')).pack(side='left', padx=4)
         output.bind('<KeyPress>', lambda event: self.keypress(event, item))
         output.bind('<<Paste>>', lambda event: self.paste(item))
         output.bind('<Control-Shift-C>', lambda event: self.copy(item))
@@ -96,11 +109,28 @@ class CommandPanel:
         output.focus_set()
 
     def send(self, item, text):
-        if item['ready'] and not item['ended'] and not self.page.readonly.get():
+        self.transmit(item, text)
+        return 'break'
+
+    def transmit(self, item, text):
+        if item['ended']:
+            self.notice.set('会话已结束，请新建会话')
+        elif not item['ready']:
+            self.notice.set('正在连接，请等待会话连接完成后输入')
+        elif self.page.readonly.get():
+            self.notice.set('只读模式下不可执行命令')
+        else:
             try:
                 item['session'].send(text)
+                return True
             except queue.Full:
                 self.notice.set('输入队列已满，请稍后重试')
+        return False
+
+    def execute_command(self, item):
+        entry = item['command_entry']
+        if self.transmit(item, entry.get() + '\r'):
+            entry.delete(0, 'end')
         return 'break'
 
     def keypress(self, event, item):

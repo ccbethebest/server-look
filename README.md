@@ -1,3 +1,10 @@
+## 2.18.4 命令输入与刷新 / Command input and refresh
+
+- 命令行控制页面暂停每 3 秒的监控数据自动刷新；切回其他页面后恢复。SSH 输出继续实时接收，上方“刷新”仍可手动使用。
+- Shell 新增独立“命令输入”栏，文字在本机显示，回车或“执行”发送到当前服务器会话；保留直接点击终端输入的方式。新增中断 Ctrl+C、恢复显示 Ctrl+Q 按钮。
+- 如果误按 Ctrl+S 导致终端输出暂停，可用 Ctrl+Q 恢复；图形文件编辑窗口中的 Ctrl+S 仍为保存。连接未就绪、只读、会话结束时明确提示，输入栏保留未发送命令。
+- Command pages pause automatic monitoring snapshots while SSH output stays live. Shell tabs add a visible command entry, Enter/Execute, interrupt and Ctrl+Q output-resume controls. Unsent commands remain available when the session cannot accept input.
+
 ## 2.18.3 命令行图形编辑 / Graphical editing from the shell
 
 - 新建命令行后，输入 `vim 文件名` 或 `vi 文件名`，直接打开与文件浏览相同的独立文本编辑窗口；按命令行当前目录解析路径，支持空格与中文文件名。Ctrl+S 保存、Ctrl+Z 撤销，未保存关闭时询问保存/放弃/取消。
@@ -27,7 +34,7 @@
 - 密钥检测/生成报告公钥与私钥位置，复用已有密钥；公钥配置先只读检查，已配对直接提示，未配对经“是/否”确认后追加。
 - 保留 2.16.1、2.17.0。编辑器限制 4 MiB，保留 UTF-8/BOM、UTF-16 BOM 或 GB18030 编码及常规换行格式；服务器只读模式阻止保存，文件外部修改会阻止覆盖。
 
-# 服务器看看 2.18.3
+# 服务器看看 2.18.4
 
 2.17.0：新增多会话 SSH 命令行、独立 Python 多行执行、SSH 密钥管理、全局界面缩放；扩大任务详情，按需查询启动来源，并支持确认后结束当前占用 NPU 的任务。保留 2.16.1。
 

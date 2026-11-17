@@ -1,3 +1,11 @@
+## 2.18.4 命令输入与刷新 / Command input and refresh
+
+进入“命令行控制”后，监控数据不再每 3 秒自动刷新；切回其他功能页面后恢复。SSH 命令输出仍实时显示，也可手动点上方“刷新”。
+
+点击终端区域可直接输入。也可在下方“命令输入”栏输入完整命令，回车或点“执行”发送到当前 Shell，会话目录和变量保持不变；输入栏适合普通单行命令，全屏程序请使用终端区域。Ctrl+C 或“中断”结束前台命令。如果误按 Ctrl+S 后屏幕不再变化，点“恢复显示 Ctrl+Q”解除终端流控暂停；图形编辑器中的 Ctrl+S 则保存文件。尚未连接完成或会话已结束时会明确提示，未发送的输入栏内容保留。
+
+Automatic monitoring pauses on the command page and resumes on other pages; SSH output remains live. Click the terminal to type directly, or use the command entry and press Enter/Execute for a single-line shell command. Use the terminal area for full-screen programs. Ctrl+C interrupts; Ctrl+Q resumes output paused by Ctrl+S. Unsent entry text is preserved if the session is unavailable.
+
 ## 2.18.3 命令行图形编辑 / Graphical editing from the shell
 
 - 新建命令行后，输入 `vim 文件名` 或 `vi 文件名`，直接打开与文件浏览相同的独立文本编辑窗口；按命令行当前目录解析路径，支持空格与中文文件名。Ctrl+S 保存、Ctrl+Z 撤销，未保存关闭时询问保存/放弃/取消。
@@ -7,7 +15,7 @@
 - 补齐应用方向键、F1–F12、修饰键、括号粘贴、备用屏幕恢复与中文光标位置。类似兼容性问题后续优先复用合适的图形窗口；当前并未自动重写其他终端程序。
 - In a new POSIX SSH shell with python3, `vim FILE` / `vi FILE` opens the existing graphical editor relative to the shell's current directory. Ctrl+S saves, Ctrl+Z undoes, and closing unsaved edits asks Save/Discard/Cancel. No Vim process starts; the prompt returns immediately. `command vim FILE` runs native Vim. Options, multiple files, sudo, containers, nested SSH and Python sessions retain normal execution. vi/vim aliases are replaced only in this shell session; persistent profiles remain unchanged. Existing text files only, up to 4 MiB, with the editor's existing permission, conflict and encoding checks. Application keys, function keys, bracketed paste, alternate-screen restoration and wide-character cursor positions have regression coverage; this does not assert full Xshell parity or target-server verification.
 
-服务器看看 2.18.3 使用说明
+服务器看看 2.18.4 使用说明
 
 2.18.2：连接、刷新、断开旁新增“关闭”，关闭当前服务器页；未保存编辑内容时仍询问保存/放弃/取消。命令行支持私有光标位置查询，并隔离单个会话的显示错误。
 

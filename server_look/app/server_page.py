@@ -406,7 +406,10 @@ class ServerPage:
             self.poll_job = self.root.after(POLL_INTERVAL_MS, self.poll)
 
     def tick(self):
-        self.refresh()
+        # Terminal output arrives through its SSH channel; monitoring snapshots
+        # are unnecessary while this page is used as an interactive terminal.
+        if self.tabs.select() != str(self.commands.frame):
+            self.refresh()
         if not self.closed:
             self.tick_job = self.root.after(REFRESH_INTERVAL_MS, self.tick)
 
