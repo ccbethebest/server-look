@@ -1,10 +1,10 @@
-## 2.21.0 D 盘安装与启动诊断
+## 2.21.1 D 盘安装与启动诊断
 
 新增：双击 `install-custom.cmd` 选择自定义安装文件夹（支持中文、空格及其他盘符）；也可用 `install.ps1 -InstallDirectory "E:\Apps\Server Look" -Launch`。取消目录选择不会安装。
 
 按住 **Ctrl＋滚轮** 可在主窗口、命令行和编辑窗口调整全局大小，每次 10%，范围 50–200%，自动保存。字体、按钮和布局同步缩放，不会重建终端连接；不按 Ctrl 时保留普通滚动。
 
-在其他电脑上，登录 GitHub 下载最新 Release 的 `server-look-2.21.0-source.zip`，解压后双击 **install-d.cmd**：安装到 `D:\ServerLook`，检查 Python、安装独立依赖，创建带服务器图标的 **Server Look** 桌面快捷方式并启动。没有 D 盘时用 `install.cmd` 安装在当前解压目录，或用 `install.ps1 -InstallDirectory E:\ServerLook -Launch` 指定位置。请勿直接在 ZIP 内运行。
+在其他电脑上，登录 GitHub 下载最新 Release 的 `server-look-2.21.1-source.zip`，解压后双击 **install-d.cmd**：安装到 `D:\ServerLook`，检查 Python、安装独立依赖，创建带服务器图标的 **Server Look** 桌面快捷方式并启动。没有 D 盘时用 `install.cmd` 安装在当前解压目录，或用 `install.ps1 -InstallDirectory E:\ServerLook -Launch` 指定位置。请勿直接在 ZIP 内运行。
 
 缺少 Python 时安装器通过 Windows WinGet 安装当前用户的 Python 3.12（需要网络）；没有 WinGet 时会明确提示手动安装带 Tcl/Tk 的 Python 3.12 或更新版本。应用和依赖放在选定目录，Python 本体遵循其当前用户安装位置。重新运行安装器可修复依赖和快捷方式；不要跨电脑复制 `.venv`。
 
@@ -158,7 +158,7 @@ Windows 多服务器可视化管理工具：在同一个客户端查看 Linux �
 
 ## 下载与快速启动
 
-- 便携版：本地构建的 `服务器看看-2.21.0.exe` 可双击运行，无需安装 Python；当前 Release 提供源码包，EXE 在线附件暂不可用。
+- 便携版：本地构建的 `服务器看看-2.21.1.exe` 可双击运行，无需安装 Python；当前 Release 提供源码包，EXE 在线附件暂不可用。
 - 源码用户：下载并解压源码 ZIP，双击 `install-d.cmd` 安装到 D 盘并创建桌面快捷方式；或者双击 `install.cmd` 安装在当前目录，再双击 `start.cmd` 启动。首次安装需要网络，依赖放在安装目录的 `.venv`。
 - PowerShell 安装并启动：`powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Launch`。执行策略仅对本次进程生效。
 - EXE 和已安装依赖的源码版均可离线启动；连接服务器需要网络可达。源码安装完成后移动目录或换电脑，请重新运行安装器，不要复制原电脑的 `.venv`。
@@ -453,3 +453,8 @@ python3 smoke_runtime.py
 产品代码集中在 `server_look/`，按应用、界面、连接、文件、映射、翻译、远程采集和配置分层；`tests/`、`tools/`、`docs/` 分别存放测试、开发工具和文档。维护入口和验证命令见 [开发说明](docs/DEVELOPMENT.md)。
 
 文件浏览：两侧导航按钮统一放大，路径栏和文件列表对齐；上传、下载、取消靠右。点击列表空白处可取消选择。服务器拖向本地时显示跟随鼠标的下载提示，按 Esc 可取消本次拖拽。
+
+
+## 2.21.1 容器命令行编辑修复
+
+修复进入 Docker 后直接输入 vi/vim 时，远端回显延迟或命令自动换行导致可视化编辑未触发的问题。保持“使用可视化文本编辑”勾选，执行 `vim xxxx.py` 即使用文件浏览同一文本编辑窗口，并根据当前容器身份读取和保存文件。取消勾选可使用原生 Vim。

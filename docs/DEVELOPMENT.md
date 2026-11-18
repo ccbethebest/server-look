@@ -219,3 +219,10 @@ English: Key detection never changes remote files. Installation needs UI confirm
 双击 `install-custom.cmd` 可通过文件夹选择对话框指定安装目录；取消不产生安装操作。`install-d.cmd` 继续默认安装到 D:\ServerLook。支持通过 `install.ps1 -InstallDirectory "E:\Apps\Server Look" -Launch` 安装到中文、空格路径。
 
 Ctrl＋滚轮向上放大、向下缩小，复用设置中的全局大小修正（50–200%，每次 10%），字体、按钮及布局同步变化并保存。此操作不重建或断开终端会话。`ui/wheel_zoom.py` 通过控件前置 bindtag 拦截 Ctrl 滚轮，在 Map 时纳入新窗口；延迟 350ms 合并保存设置。`tests/test_wheel_zoom.py` 覆盖现有/新窗口、实际字体度量、滚动拦截、边界和持久化。
+
+
+## 2.21.1 容器命令行编辑修复
+
+修复进入 Docker 后直接输入 vi/vim 时，远端回显延迟或命令自动换行导致可视化编辑未触发的问题。保持“使用可视化文本编辑”勾选，执行 `vim xxxx.py` 即使用文件浏览同一文本编辑窗口，并根据当前容器身份读取和保存文件。取消勾选可使用原生 Vim。
+
+回车拦截等待已输入命令的远端回显（最多一秒），确认前保持后续输入顺序；未确认时仅发送原始回车，Ctrl+C 可取消等待。ShellLine 按终端换行规则比较完整命令，禁止在备用屏幕注入。新增延迟回显、长命令换行、输入顺序、超时和中断回归。

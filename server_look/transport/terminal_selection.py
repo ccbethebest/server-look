@@ -39,17 +39,27 @@ class ShellLine:
             self.clear()
 
     def matches(self, screen):
-        if self.row is None or screen.cursor.y != self.row:
+        if self.row is None:
             return False
+        # Render the tracked input with the same terminal wrapping rules. The
+        # prompt may have scrolled since typing started; anchor at the cursor.
+        import pyte
         rendered = self.prefix + self.text
-        return (wcswidth(rendered) < screen.columns
-                and screen.display[self.row].rstrip() == rendered.rstrip()
-                and screen.cursor.x == wcswidth(self.prefix + self.text[:self.cursor]))
+        preview = pyte.Screen(screen.columns, max(screen.lines, len(rendered) + 1))
+        pyte.Stream(preview).feed(rendered)
+        cursor = pyte.Screen(screen.columns, max(screen.lines, len(rendered) + 1))
+        pyte.Stream(cursor).feed(self.prefix + self.text[:self.cursor])
+        start = screen.cursor.y - cursor.cursor.y
+        return (start >= 0 and start + preview.cursor.y < screen.lines
+                and screen.cursor.x == cursor.cursor.x
+                and all(screen.display[start + row].rstrip() == preview.display[row].rstrip()
+                        for row in range(preview.cursor.y + 1)))
 
     def deletion(self, screen, start, end):
         """Offsets are Unicode characters in the displayed row, including prompt."""
         start, end = start - len(self.prefix), end - len(self.prefix)
-        if not self.matches(screen) or not 0 <= start < end <= len(self.text):
+        if (wcswidth(self.prefix + self.text) >= screen.columns
+                or not self.matches(screen) or not 0 <= start < end <= len(self.text)):
             return None
         distance = end - self.cursor
         move = '\x1b[C' * distance if distance >= 0 else '\x1b[D' * -distance

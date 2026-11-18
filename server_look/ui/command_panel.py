@@ -2,6 +2,7 @@
 import queue
 import threading
 import secrets
+import time
 from tkinter import font as tkfont
 from server_look.localization.localized_ui import tk, ttk, messagebox, Menu
 from server_look.transport.terminal import TerminalSession, python_command
@@ -151,6 +152,13 @@ class CommandPanel:
         return 'break'
 
     def transmit(self, item, text, track=True):
+        pending = item.get('pending_return')
+        if track and pending:
+            if text == '\x03':
+                item.pop('pending_return')
+            else:
+                pending['following'].append(text)
+                return True
         if track and item.get('python_window'):
             self.notice.set('当前 Shell 正在运行 Python，请在弹出的 Python 窗口中操作')
             item['python_window'].window.lift()
@@ -189,18 +197,40 @@ class CommandPanel:
         if item['output'].tag_ranges('sel') and event.keysym in ('BackSpace', 'Delete'):
             return self.delete_selection(item)
         text = encode_key(event.keysym, event.char, event.state, (1 << 5) in item['screen'].mode)
+        if item.get('pending_return') and text:
+            return self.send(item, text)
         # Readline also enables application cursor keys at a normal shell prompt.
         # Only the alternate screen indicates a fullscreen editor here.
         if (text == '\r' and item.get('shell_line') is not None
                 and item['screen']._primary is None):
             line = item['shell_line']
-            if line.matches(item['screen']):
-                command = editor_command(line.text, item['editor_bridge'].token, self.visual_editor.get())
-                if command != line.text:
+            command = editor_command(line.text, item['editor_bridge'].token, self.visual_editor.get())
+            if command != line.text:
+                if line.matches(item['screen']):
                     text = '\x05\x15' + command + '\r'
+                else:
+                    # SSH echo is asynchronous. Hold Enter briefly instead of
+                    # launching native Vim before the matching output arrives.
+                    item['pending_return'] = dict(command=command, deadline=time.monotonic() + 1,
+                                                  following=[])
+                    return 'break'
         if text:
             self.send(item, text)
         return 'break'
+
+    def complete_pending_return(self, item):
+        pending = item.get('pending_return')
+        if not pending:
+            return
+        matches = item['screen']._primary is None and item['shell_line'].matches(item['screen'])
+        if not matches and time.monotonic() < pending['deadline']:
+            return
+        item.pop('pending_return')
+        # Fail safely to the original Enter if output never confirms our input.
+        text = '\x05\x15' + pending['command'] + '\r' if matches else '\r'
+        self.transmit(item, text)
+        for following in pending['following']:
+            self.transmit(item, following)
 
     def right_click(self, event, item):
         self.activate_terminal(item)
@@ -333,6 +363,8 @@ class CommandPanel:
             for event, payload in item['editor_bridge'].feed_events(''):
                 self.bridge_event(item, event, payload)
                 dirty = True
+        if not item['ended']:
+            self.complete_pending_return(item)
         if dirty:
             self.render(item)
 

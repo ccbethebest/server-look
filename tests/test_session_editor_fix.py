@@ -91,6 +91,73 @@ class SessionEditorFixTests(TerminalRecoveryTests):
         self.panel.page.resources.editors.open.assert_called_once_with(
             '/tmp/container.txt', remote=True, context=context)
 
+    def test_container_vim_waits_for_delayed_remote_echo(self):
+        self.item['ready'] = True
+        self.item['stream'].feed('root@container:/work# ')
+        for char in 'vim xxxx.py':
+            self.panel.keypress(SimpleNamespace(keysym=char, char=char, state=0), self.item)
+        self.item['session'].send.reset_mock()
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        self.item['session'].send.assert_not_called()
+        self.item['session'].events.put(('data', 'vim xxxx.py'))
+        self.poll()
+        sent = self.item['session'].send.call_args.args[0]
+        self.assertIn('vim()', sent)
+        self.assertTrue(sent.endswith('; vim xxxx.py\r'))
+
+    def test_delayed_echo_preserves_following_input_order(self):
+        self.item['ready'] = True
+        self.item['stream'].feed('container# ')
+        for char in 'vim xxxx.py':
+            self.panel.keypress(SimpleNamespace(keysym=char, char=char, state=0), self.item)
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        self.item['session'].send.reset_mock()
+        self.panel.send(self.item, 'pwd')
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        self.item['session'].send.assert_not_called()
+        self.item['session'].events.put(('data', 'vim xxxx.py'))
+        self.poll()
+        sent = [call.args[0] for call in self.item['session'].send.call_args_list]
+        self.assertIn('vim()', sent[0])
+        self.assertEqual(sent[1:], ['pwd', '\r'])
+
+    def test_unconfirmed_input_times_out_without_injecting_shell_code(self):
+        self.item['ready'] = True
+        self.item['stream'].feed('container# ')
+        for char in 'vim xxxx.py':
+            self.panel.keypress(SimpleNamespace(keysym=char, char=char, state=0), self.item)
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        self.item['session'].send.reset_mock()
+        self.item['pending_return']['deadline'] = 0
+        self.poll()
+        self.item['session'].send.assert_called_once_with('\r')
+        self.assertNotIn('pending_return', self.item)
+
+    def test_interrupt_cancels_pending_editor_command(self):
+        self.item['ready'] = True
+        self.item['stream'].feed('container# ')
+        for char in 'vim xxxx.py':
+            self.panel.keypress(SimpleNamespace(keysym=char, char=char, state=0), self.item)
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        self.item['session'].send.reset_mock()
+        self.panel.send(self.item, '\x03')
+        self.assertNotIn('pending_return', self.item)
+        self.poll()
+        self.item['session'].send.assert_called_once_with('\x03')
+
+    def test_container_vim_with_wrapped_command_opens_editor(self):
+        self.item['ready'] = True
+        self.item['screen'].resize(columns=40)
+        self.item['stream'].feed('root@container:/work# ')
+        command = 'vim /usr/local/lib/python3.12/xxxx.py'
+        for char in command:
+            self.panel.keypress(SimpleNamespace(keysym=char, char=char, state=0), self.item)
+            self.item['stream'].feed(char)
+        self.panel.keypress(SimpleNamespace(keysym='Return', char='\r', state=0), self.item)
+        sent = self.item['session'].send.call_args.args[0]
+        self.assertIn('vim()', sent)
+        self.assertTrue(sent.endswith('; ' + command + '\r'))
+
     def test_python_at_application_cursor_prompt_also_restores_bridge(self):
         self.item['ready'] = True
         self.item['stream'].feed('\x1b[?1hroot@container:~# ')
