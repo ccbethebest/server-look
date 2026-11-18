@@ -1,4 +1,5 @@
 """Validated desktop preferences, independent of encrypted connection history."""
+from server_look.paths import user_data_dir
 import json
 import os
 from pathlib import Path
@@ -36,7 +37,7 @@ def validate(values):
     return {key: result[key] for key in DEFAULTS}
 
 def preferences_path():
-    return Path(os.environ.get('APPDATA', Path.home())) / 'ServerLook' / 'ui-settings.json'
+    return user_data_dir() / 'ui-settings.json'
 
 def load_preferences(path=None):
     try:

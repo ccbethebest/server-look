@@ -1,3 +1,15 @@
+## 2.22.0 macOS 平台边界
+
+分平台 Release：`v版本号-windows` / `v版本号-macos`，源码包内部目录始终为 `server-look-版本号/`。Windows 快速安装器枚举 Release，只选择正式 Windows 标签或历史无后缀标签，从资产文件名提取源码目录版本。macOS Release 不设为仓库 latest，兼容已有 Windows 安装脚本。
+
+`paths.user_data_dir` 统一配置路径；Windows APPDATA 保持原位置，Mac 使用 Application Support。`transport/mac_keychain.py` 显式使用 keyring 的原生 macOS 后端，禁止不安全降级；历史 JSON 原子写入成功后才清理旧引用，写入失败回收新建秘密。
+
+`ui/platform_ui.py` 集中 Command 别名、Menlo 字体和窗口模式适配。Shell 保留 Control+C 中断，Command+C/V 操作剪贴板；Option 状态位独立于 Command。Mac 图标使用 PNG，安装生成 ICNS 与 .app；系统退出事件经过原有未保存编辑检查。Mac 文件夹用参数列表调用 open，搜索子进程采用 spawn，避免在 Tk 进程中 fork。
+
+`tools/install_macos.py` 只复制发布白名单，在安装目录创建 venv 并实际建窗检查 TkinterDnD。应用的 Info.plist、可执行启动器和 ICNS 在 Mac 上生成；启动路径用 shlex.quote 处理空格、单引号与中文。安装拒绝家目录、根目录、源码相互嵌套路径及会覆盖的符号链接目录。正常 venv 内的 Python 符号链接保留。不打包本机设置、连接历史和凭据。
+
+Windows 回归：`python -m tools.run_tests`；Mac 平台边界：`python -m unittest tests.test_macos -v`。这些 mock 测试验证路径、参数、密码引用生命周期和安装元数据，不能替代 Mac 真机测试。Mac 独立应用的后续打包应在 macOS 上完成，并分别验证 Intel / Apple Silicon；本次交付为源码安装程序。
+
 ## 2.20.1 Windows 安装与启动边界
 
 install.ps1 检测 py 启动器、PATH Python 和用户 Python312，要求 Python 3.12+、Tcl/Tk 和 venv；缺少时使用 WinGet 当前用户安装。应用复制采用发布文件白名单，虚拟环境在目标机创建；拒绝驱动器根目录、源码子目录和符号链接 .venv。原有失效环境通过 venv --clear 重建，健康环境复用并补齐依赖。验证导入和 TkinterDnD 实际建窗后使用 WScript.Shell 创建具有绝对目标、工作目录和 ICO 的桌面快捷方式。

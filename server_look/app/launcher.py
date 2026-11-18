@@ -1,10 +1,12 @@
 """Keep startup errors visible even when launched without a console."""
+from server_look.paths import user_data_dir
 from datetime import datetime
 import os
 from pathlib import Path
 import sys
 import tempfile
 import traceback
+import subprocess
 
 
 def start_application():
@@ -16,6 +18,14 @@ def show_error(message):
     if sys.platform == 'win32':
         import ctypes
         ctypes.windll.user32.MessageBoxW(None, message, '服务器看看：启动失败', 0x10)
+    elif sys.platform == 'darwin':
+        print(message, file=sys.stderr)
+        try:
+            subprocess.run(['osascript', '-e',
+                            'on run argv\ndisplay alert "服务器看看：启动失败" message (item 1 of argv) as critical\nend run',
+                            message], check=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            pass
     else:
         print(message, file=sys.stderr)
 
@@ -26,7 +36,7 @@ def run():
     except Exception:
         detail = traceback.format_exc()
         location = '无法写入启动日志。'
-        for directory in (Path(os.environ.get('APPDATA', str(Path.home()))) / 'ServerLook',
+        for directory in (user_data_dir(),
                           Path(tempfile.gettempdir()) / 'ServerLook'):
             try:
                 directory.mkdir(parents=True, exist_ok=True)

@@ -43,7 +43,7 @@ def ensure_key(directory=None):
             raise ValueError('id_ed25519 已存在但密钥对不完整，请先检查，程序不会覆盖')
         generator = shutil.which('ssh-keygen')
         if not generator:
-            raise RuntimeError('未安装 ssh-keygen，请安装 Windows OpenSSH 客户端')
+            raise RuntimeError('未安装 ssh-keygen，请安装 OpenSSH 客户端')
         result = subprocess.run([generator, '-t', 'ed25519', '-N', '', '-C', 'ServerLook', '-f', str(target)],
                                 capture_output=True, text=True, timeout=30,
                                 creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))

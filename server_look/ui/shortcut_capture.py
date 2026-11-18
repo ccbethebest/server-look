@@ -1,9 +1,10 @@
 """Record keyboard shortcuts without allowing mouse events or Tcl scripts."""
+import sys
 import re
 
 _MODIFIERS = {'Control_L', 'Control_R', 'Shift_L', 'Shift_R', 'Alt_L', 'Alt_R',
               'Meta_L', 'Meta_R', 'Super_L', 'Super_R', 'Caps_Lock', 'Num_Lock'}
-_PATTERN = re.compile(r'<(?:(?:Control|Shift|Alt)-)*(?:[a-zA-Z0-9]|F(?:[1-9]|[12][0-9]|3[0-5])|Return|Tab|space|Escape|Delete|BackSpace|Insert|Home|End|Prior|Next|Left|Right|Up|Down|comma|period|slash|backslash|semicolon|apostrophe|minus|equal|bracketleft|bracketright|grave)>')
+_PATTERN = re.compile(r'<(?:(?:Control|Command|Shift|Alt)-)*(?:[a-zA-Z0-9]|F(?:[1-9]|[12][0-9]|3[0-5])|Return|Tab|space|Escape|Delete|BackSpace|Insert|Home|End|Prior|Next|Left|Right|Up|Down|comma|period|slash|backslash|semicolon|apostrophe|minus|equal|bracketleft|bracketright|grave)>')
 
 
 def valid_shortcut(value):
@@ -17,7 +18,8 @@ def key_sequence(event):
     if len(key) == 1 and key.isalpha():
         key = key.upper() if event.state & 1 else key.lower()
     modifiers = []
-    for mask, name in ((4, 'Control'), (1, 'Shift'), (0x20008, 'Alt')):
+    masks = ((4, 'Control'), (1, 'Shift'), (16, 'Alt'), (8, 'Command')) if sys.platform == 'darwin' else ((4, 'Control'), (1, 'Shift'), (0x20008, 'Alt'))
+    for mask, name in masks:
         if event.state & mask:
             modifiers.append(name)
     sequence = '<' + '-'.join((*modifiers, key)) + '>'

@@ -1,4 +1,5 @@
 """Independent server page; all Tk widget updates stay on the main thread."""
+from server_look.ui.platform_ui import monospace
 from concurrent.futures import ThreadPoolExecutor
 import json
 import queue
@@ -112,7 +113,7 @@ class ServerPage:
         ttk.Label(form, text='密码').grid(row=6, column=0, sticky='w')
         self.password_entry = ttk.Entry(form, textvariable=self.password, show='●', state='disabled')
         self.password_entry.grid(row=6, column=1, columnspan=2, sticky='ew', pady=5)
-        ttk.Checkbutton(form, text='记住密码（Windows 加密）', variable=self.remember_password).grid(row=7, column=1, columnspan=2, sticky='w', pady=(6, 16))
+        ttk.Checkbutton(form, text='记住密码（系统安全存储）', variable=self.remember_password).grid(row=7, column=1, columnspan=2, sticky='w', pady=(6, 16))
         actions = ttk.Frame(form)
         actions.grid(row=8, column=0, columnspan=3, sticky='e')
         icon_button(actions, text='取消', command=self.connection_dialog.withdraw).pack(side='left', padx=8)
@@ -134,7 +135,7 @@ class ServerPage:
         self.containers = self.table('Docker 容器', [('name', '容器名称', 280), ('started', '容器开始时间', 210), ('pid', '入口 PID', 100), ('image', '镜像', 480)])
         npu = ttk.Frame(self.tabs)
         self.tabs.add(npu, text='NPU / GPU 状态')
-        self.npu = tk.Text(npu, font=('Consolas', 11), wrap='none', state='disabled')
+        self.npu = tk.Text(npu, font=(monospace(), 11), wrap='none', state='disabled')
         self.npu.pack(fill='both', expand=True)
         self.resources = ResourceViews(self)
         from server_look.ui.command_panel import CommandPanel
@@ -232,7 +233,7 @@ class ServerPage:
             return True
         except (OSError, ValueError, UnicodeError):
             self.password.set('')
-            self.status.set('此密码无法在当前 Windows 用户下解密，请重新输入密码')
+            self.status.set('无法从当前系统安全存储读取密码，请重新输入密码')
             return False
 
     def forget_history(self):
@@ -258,7 +259,7 @@ class ServerPage:
             self.history_store.save(record, password, remember)
             self.reload_history()
         except (OSError, ValueError):
-            messagebox.showwarning('连接历史', '连接成功，但保存历史失败。请检查用户配置目录权限及 Windows 密码加密服务。', parent=self.root)
+            messagebox.showwarning('连接历史', '连接成功，但保存历史失败。请检查用户配置目录权限及系统密码安全存储服务。', parent=self.root)
 
     def set_connection_state(self, state, error=''):
         self.connection_state.set(state)

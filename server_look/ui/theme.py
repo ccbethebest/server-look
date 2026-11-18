@@ -1,5 +1,8 @@
 """Shared dark-blue desktop palette and state-stable navigation styles."""
+from server_look.ui.platform_ui import monospace
+from server_look.paths import user_data_dir
 import json
+import sys
 import math
 import os
 from pathlib import Path
@@ -8,7 +11,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import font as tkfont
 
-FONT = ('Microsoft YaHei UI', 10)
+FONT = ('Helvetica' if sys.platform == 'darwin' else 'Microsoft YaHei UI', 10)
 
 
 # background, surface, raised, text, muted, accent, selection, success, error
@@ -20,7 +23,7 @@ PALETTES = {
 
 
 def preferences_path():
-    return Path(os.environ.get('APPDATA', Path.home())) / 'ServerLook' / 'appearance.json'
+    return user_data_dir() / 'appearance.json'
 
 
 def load_theme(path=None):
@@ -58,7 +61,7 @@ def apply_theme(root, name='深海蓝'):
     if not hasattr(root, '_serverlook_base_scaling'):
         root._serverlook_base_scaling = float(root.tk.call('tk', 'scaling'))
     root.tk.call('tk', 'scaling', root._serverlook_base_scaling * scale)
-    FONT = ('Microsoft YaHei UI', options.get('font_size', 10))
+    FONT = ('Helvetica' if sys.platform == 'darwin' else 'Microsoft YaHei UI', options.get('font_size', 10))
     button_font = (FONT[0], options.get('button_font', 10))
     padding = {'紧凑': (9, 4), '标准': (12, 7), '宽松': (16, 10)}[options.get('button_size', '紧凑')]
     style = ttk.Style(root)
@@ -81,7 +84,7 @@ def apply_theme(root, name='深海蓝'):
     style.configure('Header.TFrame', background=SURFACE)
     style.configure('TLabel', background=BACKGROUND, foreground=TEXT)
     style.configure('Title.TLabel', background=SURFACE, foreground=TEXT,
-                    font=('Microsoft YaHei UI', 20, 'bold'))
+                    font=('Helvetica' if sys.platform == 'darwin' else 'Microsoft YaHei UI', 20, 'bold'))
     style.configure('Subtitle.TLabel', background=SURFACE, foreground=MUTED)
     style.configure('Muted.TLabel', foreground=MUTED)
     style.configure('Brand.TLabel', font=(FONT[0], 13, 'bold'), foreground=MUTED)
@@ -91,7 +94,7 @@ def apply_theme(root, name='深海蓝'):
     style.configure('ConnectionSuccess.TLabel', foreground=SUCCESS, font=(FONT[0], 10, 'bold'))
     style.configure('ConnectionError.TLabel', foreground=ERROR, font=(FONT[0], 10, 'bold'))
     style.configure('Card.TLabel', padding=(16, 13), background=RAISED,
-                    foreground=ACCENT if name == '云雾白' else '#8dd9ff', font=('Microsoft YaHei UI', 11, 'bold'))
+                    foreground=ACCENT if name == '云雾白' else '#8dd9ff', font=('Helvetica' if sys.platform == 'darwin' else 'Microsoft YaHei UI', 11, 'bold'))
     style.configure('TButton', width=0, font=button_font, padding=padding, background=RAISED, foreground=TEXT,
                     borderwidth=1, relief='flat', focusthickness=1, focuscolor='#70c9ff')
     style.map('TButton', background=[('disabled', SURFACE), ('pressed', SELECTED), ('active', SELECTED)],
@@ -144,17 +147,17 @@ def apply_theme(root, name='深海蓝'):
               expand=[('selected', (0, 0, 0, 0)), ('!selected', (0, 0, 0, 0))],
               padding=[('selected', (14, 8)), ('!selected', (14, 8))],
               font=[('selected', FONT), ('!selected', FONT)])
-    style.configure('Server.TNotebook.Tab', padding=(18, 9), font=('Microsoft YaHei UI', 11, 'bold'))
+    style.configure('Server.TNotebook.Tab', padding=(18, 9), font=('Helvetica' if sys.platform == 'darwin' else 'Microsoft YaHei UI', 11, 'bold'))
     for notebook_style in ('Content.TNotebook', 'Solo.Server.TNotebook', 'Server.TNotebook'):
         style.configure(notebook_style, tabmargins=0)
         style.layout(notebook_style + '.Tab', [])
     style.map('Server.TNotebook.Tab', padding=[('selected', (18, 9)), ('!selected', (18, 9))],
-              font=[('selected', ('Microsoft YaHei UI', 11, 'bold')),
-                    ('!selected', ('Microsoft YaHei UI', 11, 'bold'))])
+              font=[('selected', ('Helvetica' if sys.platform == 'darwin' else 'Microsoft YaHei UI', 11, 'bold')),
+                    ('!selected', ('Helvetica' if sys.platform == 'darwin' else 'Microsoft YaHei UI', 11, 'bold'))])
     style.configure('Treeview', rowheight=max(30, FONT[1] * 2 + 10), background=SURFACE, fieldbackground=SURFACE,
                     foreground=TEXT, borderwidth=0)
     style.configure('Treeview.Heading', padding=(10, 11), background=RAISED,
-                    foreground=TEXT, relief='flat', font=('Microsoft YaHei UI', 10, 'bold'))
+                    foreground=TEXT, relief='flat', font=('Helvetica' if sys.platform == 'darwin' else 'Microsoft YaHei UI', 10, 'bold'))
     style.map('Treeview.Heading', background=[('active', SELECTED)])
     style.map('Treeview', background=[('selected', SELECTED)], foreground=[('selected', '#ffffff')])
     style.configure('TScrollbar', background=RAISED, troughcolor=BACKGROUND,
@@ -179,7 +182,7 @@ def apply_theme(root, name='深海蓝'):
             widget.configure(background=BACKGROUND)
         if isinstance(widget, tk.Text):
             font_size = max(FONT[1], getattr(widget, '_serverlook_min_font_size', 0))
-            widget.configure(font=('Consolas', font_size), background=SURFACE, foreground=TEXT, insertbackground=TEXT,
+            widget.configure(font=(monospace(), font_size), background=SURFACE, foreground=TEXT, insertbackground=TEXT,
                              selectbackground=SELECTED, selectforeground='#ffffff',
                              highlightbackground=RAISED, highlightcolor=ACCENT)
         elif isinstance(widget, tk.Menu):

@@ -1,4 +1,5 @@
 """Shared four-space indentation for file and Python script editors."""
+from server_look.ui.platform_ui import command_aliases
 
 
 def bind_indentation(text):
@@ -6,6 +7,7 @@ def bind_indentation(text):
     text.bind('<Shift-Tab>', lambda event: indent(text, backwards=True))
     text.bind('<ISO_Left_Tab>', lambda event: indent(text, backwards=True))
     text.bind('<Control-slash>', lambda event: toggle_comment(text))
+    command_aliases(text)
 
 
 def indent(text, backwards=False):

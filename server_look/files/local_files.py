@@ -3,6 +3,7 @@ from pathlib import Path
 import queue
 import threading
 import os
+import sys
 import time
 from datetime import datetime
 from server_look.localization.localized_ui import ttk, StringVar, messagebox, simpledialog, Menu
@@ -11,6 +12,7 @@ from server_look.ui.ui_icons import button as icon_button, file_navigation
 from server_look.files.file_transfer import Transfer, open_local_folder
 from server_look.files.transfer_progress import update_progress
 from server_look.ui.table_sort import enable_sort
+from server_look.ui.platform_ui import shortcut_sequences
 
 
 class LocalFiles:
@@ -81,6 +83,8 @@ class LocalFiles:
             for label, action in commands:
                 menu.add_command(label=label, command=lambda a=action, r=remote: self.operate(r, a))
             tree.bind('<Button-3>', lambda event, tree=tree, menu=menu: self.context_menu(event, tree, menu))
+            if sys.platform == 'darwin':
+                tree.bind('<Button-2>', lambda event, tree=tree, menu=menu: self.context_menu(event, tree, menu))
 
     def configure_shortcuts(self, shortcuts):
         from server_look.config.ui_preferences import FILE_ACTIONS
@@ -91,8 +95,9 @@ class LocalFiles:
             for label, action in FILE_ACTIONS.items():
                 key = shortcuts[label]
                 if key != '无':
-                    tree.bind(key, lambda event, r=remote, a=action: self.operate(r, a))
-                    tree._file_keys.append(key)
+                    for sequence in shortcut_sequences(key):
+                        tree.bind(sequence, lambda event, r=remote, a=action: self.operate(r, a))
+                        tree._file_keys.append(sequence)
 
     @staticmethod
     def context_menu(event, tree, menu):

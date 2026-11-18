@@ -1,4 +1,4 @@
-"""Per-user connection history; Windows DPAPI protects reusable SSH passwords."""
+"""Per-user history; reusable passwords use Windows DPAPI or macOS Keychain."""
 import base64
 import ctypes
 from ctypes import wintypes
@@ -6,6 +6,9 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import sys
+from server_look.paths import user_data_dir
+from server_look.transport import mac_keychain
 
 
 class _Blob(ctypes.Structure):
@@ -35,16 +38,22 @@ def _crypt(data, decrypt=False):
 
 
 def protect(password):
+    if sys.platform == 'darwin':
+        return mac_keychain.save(password)
     return base64.b64encode(_crypt(password.encode('utf-8'))).decode('ascii')
 
 
 def unprotect(token):
+    if token.startswith(mac_keychain.PREFIX):
+        if sys.platform != 'darwin':
+            raise OSError('此密码保存在另一台 Mac 的钥匙串中，请重新输入')
+        return mac_keychain.read(token)
     return _crypt(base64.b64decode(token, validate=True), decrypt=True).decode('utf-8')
 
 
 class ConnectionHistory:
     def __init__(self, path=None):
-        self.path = Path(path) if path else Path(os.environ.get('APPDATA', Path.home())) / 'ServerLook' / 'connections.json'
+        self.path = Path(path) if path else user_data_dir() / 'connections.json'
 
     @staticmethod
     def identity(record):
@@ -78,10 +87,25 @@ class ConnectionHistory:
         entry = {k: str(record[k]) for k in ('host', 'user', 'port', 'auth_mode')}
         if remember and entry['auth_mode'] == 'password' and password:
             entry['password'] = protect(password)
-        self._write([entry] + [r for r in records if self.identity(r) != self.identity(entry)])
+        previous = [r for r in records if self.identity(r) == self.identity(entry)]
+        try:
+            self._write([entry] + [r for r in records if self.identity(r) != self.identity(entry)])
+        except Exception:
+            self._forget_secrets([entry])
+            raise
+        self._forget_secrets(previous)
+
+    @staticmethod
+    def _forget_secrets(records):
+        for record in records:
+            token = record.get('password', '')
+            if sys.platform == 'darwin' and token.startswith(mac_keychain.PREFIX):
+                mac_keychain.delete(token)
 
     def password(self, record):
         return unprotect(record['password']) if record.get('password') else ''
 
     def delete(self, record):
-        self._write([r for r in self.load() if self.identity(r) != self.identity(record)])
+        records = self.load()
+        self._write([r for r in records if self.identity(r) != self.identity(record)])
+        self._forget_secrets([r for r in records if self.identity(r) == self.identity(record)])

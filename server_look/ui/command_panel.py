@@ -1,4 +1,6 @@
 """Per-server command workspace with independent shell and Python PTYs."""
+import sys
+from server_look.ui.platform_ui import monospace
 import queue
 import threading
 import secrets
@@ -69,7 +71,7 @@ class CommandPanel:
         input_bar.pack(side='bottom', fill='x')
         input_status = tk.StringVar(value='键盘输入：点击终端启用')
         ttk.Label(input_bar, textvariable=input_status).pack(side='left', padx=4)
-        output = tk.Text(frame, wrap='none', height=24, font=('Consolas', 10), undo=False)
+        output = tk.Text(frame, wrap='none', height=24, font=(monospace(), 10), undo=False)
         scroll = ttk.Scrollbar(frame, command=output.yview)
         scroll.pack(side='right', fill='y')
         output.configure(yscrollcommand=scroll.set)
@@ -103,6 +105,10 @@ class CommandPanel:
         output.bind('<<Paste>>', lambda event: self.paste(item))
         output.bind('<Control-Shift-C>', lambda event: self.copy(item))
         output.bind('<Control-Shift-V>', lambda event: self.paste(item))
+        if sys.platform == 'darwin':
+            output.bind('<Command-c>', lambda event: self.copy(item))
+            output.bind('<Command-v>', lambda event: self.paste(item))
+            output.bind('<Button-2>', lambda event: self.right_click(event, item))
         menu = item['text_menu'] = Menu(output, tearoff=False)
         menu.add_command(label='复制', command=lambda: self.copy(item))
         menu.add_command(label='粘贴', command=lambda: self.paste(item))

@@ -1,5 +1,6 @@
 """Native text editing actions for the command entry and Python editor."""
 from server_look.localization.localized_ui import tk, Menu
+import sys
 
 
 def has_selection(widget):
@@ -28,4 +29,6 @@ def bind_text_menu(widget):
                 menu.grab_release()
         return 'break'
     widget.bind('<Button-3>', right_click)
+    if sys.platform == 'darwin':
+        widget.bind('<Button-2>', right_click)
     return menu

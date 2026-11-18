@@ -1,4 +1,6 @@
 """A multiline Python window using the interpreter in the current shell."""
+from server_look.ui.platform_ui import command_aliases
+from server_look.ui.platform_ui import monospace
 from pathlib import Path
 from tkinter import filedialog
 from server_look.localization.localized_ui import tk, ttk, messagebox
@@ -66,6 +68,8 @@ class ContextPythonWindow:
         self.window.bind('<Control-s>', self.save)
         self.window.bind('<Control-f>', self.show_search)
         self.window.bind('<Control-o>', self.open_file)
+        command_aliases(self.editor)
+        command_aliases(self.window)
         input_bar = ttk.Frame(self.window)
         input_bar.pack(fill='x', padx=8, pady=(0, 8))
         ttk.Label(input_bar, text='程序输入（用于 input()）：').pack(side='left')
@@ -79,7 +83,7 @@ class ContextPythonWindow:
     @staticmethod
     def text_area(parent, height, undo):
         text = tk.Text(parent, wrap='none', height=height, undo=undo, autoseparators=True,
-                       maxundo=-1, font=('Consolas', 11))
+                       maxundo=-1, font=(monospace(), 11))
         vertical = ttk.Scrollbar(parent, command=text.yview)
         horizontal = ttk.Scrollbar(parent, orient='horizontal', command=text.xview)
         text.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)

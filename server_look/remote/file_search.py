@@ -1,3 +1,4 @@
+import sys
 """Bounded, cancellable filename search isolated from the GUI process (stdlib only)."""
 from collections import deque
 import fnmatch
@@ -122,7 +123,7 @@ def run_search(path, pattern, mode='包含', case_sensitive=False, recursive=Tru
     options['directory_sizes'] = bool(directory_sizes)
     # Isolation also bounds pathological regular expressions. Linux remote source uses fork;
     # Windows frozen clients use spawn and freeze_support in the executable entry point.
-    context = multiprocessing.get_context('spawn' if os.name == 'nt' else 'fork')
+    context = multiprocessing.get_context('fork' if sys.platform.startswith('linux') else 'spawn')
     receive, send = context.Pipe(duplex=False)
     process = context.Process(target=_search_worker, args=(send, options, limit, scan_limit), daemon=True)
     results, meta = [], {'scanned': None, 'skipped': None, 'reason': '超时，返回已完成批次'}

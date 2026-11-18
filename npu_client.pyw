@@ -1,4 +1,4 @@
-"""Windows GUI entry point. Implementation lives in normal importable modules."""
+"""Desktop GUI entry point. Implementation lives in normal importable modules."""
 from server_look.app.launcher import run
 
 

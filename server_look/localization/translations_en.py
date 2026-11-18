@@ -1,5 +1,9 @@
 """Offline English captions. Keys remain stable Chinese application values."""
 ENGLISH = {
+    '记住密码（系统安全存储）': 'Remember password (system secure storage)',
+    '无法从当前系统安全存储读取密码，请重新输入密码': 'Cannot read the password from system secure storage. Please enter it again.',
+    '连接成功，但保存历史失败。请检查用户配置目录权限及系统密码安全存储服务。': 'Connected, but history could not be saved. Check settings folder permissions and system secure storage.',
+    '未安装 ssh-keygen，请安装 OpenSSH 客户端': 'ssh-keygen is missing. Please install an OpenSSH client.',
     '耗时 {0}': 'Elapsed {0}',
     '服务器文件': 'Server files', '本地文件': 'Local files', '根目录': 'Root',
     '双击进入文件夹 · 右键进行文件操作': 'Double-click folders to enter · Right-click for file actions',

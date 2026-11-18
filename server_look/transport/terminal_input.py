@@ -4,7 +4,8 @@ import sys
 
 def encode_key(key, char='', state=0, application_cursor=False):
     # Tk/Windows uses Mod1 (8) for Num Lock, and 0x20000 for Alt.
-    alt = bool(state & (0x20000 if sys.platform == 'win32' else 8))
+    alt_mask = 0x20000 if sys.platform == 'win32' else (16 if sys.platform == 'darwin' else 8)
+    alt = bool(state & alt_mask)
     modifier = 1 + bool(state & 1) + 2 * alt + 4 * bool(state & 4)
     cursor = {'Up': 'A', 'Down': 'B', 'Right': 'C', 'Left': 'D', 'Home': 'H', 'End': 'F'}
     if key in cursor:

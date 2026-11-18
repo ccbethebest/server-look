@@ -1,4 +1,5 @@
 """Desktop window and server-tab lifecycle; no SSH or process operations here."""
+from server_look.ui.platform_ui import window_mode
 from server_look.paths import resource_root
 from server_look.localization.localized_ui import tk
 from pathlib import Path
@@ -29,7 +30,11 @@ class MultiServerApp:
         self.dialogs = []
         apply_theme(root, load_theme())
         icon = resource_root() / 'assets' / 'server.ico'
-        root.iconbitmap(default=str(icon))
+        if sys.platform == 'win32':
+            root.iconbitmap(default=str(icon))
+        else:
+            self.app_icon = tk.PhotoImage(file=str(resource_root() / 'assets' / 'server.png'))
+            root.iconphoto(True, self.app_icon)
         root.title(f'{tr(APP_NAME)} {APP_VERSION}')
         width = min(1320, root.winfo_screenwidth() - 40)
         height = min(900, root.winfo_screenheight() - 90)
@@ -66,6 +71,8 @@ class MultiServerApp:
             self.add_server(host)
         self.notebook.select(0)
         root.protocol('WM_DELETE_WINDOW', self.close)
+        if sys.platform == 'darwin':
+            root.createcommand('tk::mac::Quit', self.close)
         self.apply_preferences(self.preferences)
         from server_look.ui.wheel_zoom import WheelZoom
         self.wheel_zoom = WheelZoom(self)
@@ -186,7 +193,7 @@ class MultiServerApp:
             widget.pack_forget()
             widget.pack(side='top' if vertical else 'left', padx=4, pady=2)
         self.workarea.pack(fill='both', expand=True, padx=8, pady=(0, 8))
-        self.root.state('zoomed' if values['window'] == '最大化' else 'normal')
+        window_mode(self.root, values['window'] == '最大化')
         for page in self.pages.values():
             self.configure_page(page)
         for key in self.bound_shortcuts:
@@ -197,6 +204,10 @@ class MultiServerApp:
             if key != '无' and action in actions:
                 self.root.bind(key, lambda event, action=action: self.run_shortcut(event, actions[action]))
                 self.bound_shortcuts.append(key)
+                if sys.platform == 'darwin' and 'Control-' in key:
+                    alias = key.replace('Control-', 'Command-')
+                    self.root.bind(alias, lambda event, action=action: self.run_shortcut(event, actions[action]))
+                    self.bound_shortcuts.append(alias)
         self.retheme()
 
     def run_shortcut(self, event, action):

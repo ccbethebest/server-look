@@ -1,4 +1,5 @@
 """Handle Ctrl+wheel before widget scrolling, including newly opened dialogs."""
+import sys
 from server_look.config.ui_preferences import save_preferences
 from server_look.localization.localized_ui import messagebox
 
@@ -11,6 +12,8 @@ class WheelZoom:
         root = app.root
         for event in ('<Control-MouseWheel>', '<Control-Button-4>', '<Control-Button-5>'):
             root.bind_class(self.tag, event, self.on_wheel)
+        if sys.platform == 'darwin':
+            root.bind_class(self.tag, '<Command-MouseWheel>', self.on_wheel)
         root.bind_all('<Map>', lambda event: self.attach(event.widget), add='+')
         self.attach(root)
 

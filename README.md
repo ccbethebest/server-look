@@ -1,3 +1,26 @@
+## 2.22.0 macOS 支持与分平台发布
+
+Windows 与 Mac 共用源码，各自使用独立安装入口；可以分别更新，历史 2.21.1 Release 和 Windows EXE 保留。Windows 继续使用 `install-d.cmd`、`install-custom.cmd` 或 `quick-install.ps1`。
+
+GitHub Release 分别使用 `v版本号-windows` 和 `v版本号-macos` 标签，可以各自更新版本。Windows 快速安装脚本只选择 Windows Release，也兼容旧的无平台后缀版本，不会误装 Mac 发布包。Mac 从对应 macOS Release 下载源码安装包。
+
+Mac 本次提供源码安装版（尚未在 Mac 真机验证），不是免 Python 的独立 DMG。先从 [Python 官网](https://www.python.org/downloads/macos/) 安装包含 Tk 的 Python 3.12 或更新版本，再下载 Release 的 `server-look-2.22.0-source.zip` 并解压。打开终端进入解压目录，执行：
+
+```bash
+chmod +x install-macos.command
+./install-macos.command
+# 自定义目录，可包含中文和空格：
+./install-macos.command "$HOME/Applications/Server Look"
+```
+
+默认安装到 `~/Applications/ServerLook`，独立创建 `.venv` 并下载依赖，需要网络。安装后 Finder 会定位到带图标的 `服务器看看.app`，双击启动；该应用依赖整个安装目录，请不要单独移动。再次运行安装器可更新源码和依赖。也可执行安装目录内的 `start-macos.command` 启动。使用其他 Python 时，设置 `SERVERLOOK_PYTHON` 为其可执行文件绝对路径。Intel / Apple Silicon 使用对应架构的 Python，依赖也在本机安装，不要复制 Windows 环境。
+
+Mac 的编辑与文件操作支持 Command 快捷键，保存 Command+S、搜索 Command+F、撤销 Command+Z、重做 Command+Shift+Z；保留原有 Control 快捷键。终端 Command+C/V 复制粘贴，Control+C 仍发送远程中断，Option 对应终端 Alt；Control+滚轮和 Command+滚轮都可调整全局大小。编辑器与文件列表支持 Mac 右键。
+
+连接历史、设置和启动日志位于 `~/Library/Application Support/ServerLook/`，记住的密码保存到系统钥匙串，JSON 仅保存引用；钥匙串不可用时提示失败，不写入明文密码。SSH、Docker、NPU 查询和远程执行仍使用原有通道。SSH 公钥需要在每台电脑单独配置。
+
+当前已验证 Windows 回归与 Mac 平台边界的自动化测试；Mac 的首次安装、钥匙串授权、Finder 图标、文件拖放及真实 SSH/Docker 交互仍需真机验收。启动失败时查看上述目录的 `startup.log`，或从终端运行 `start-macos.command` 保留错误信息。
+
 ## 2.21.1 D 盘安装与启动诊断
 
 新增：双击 `install-custom.cmd` 选择自定义安装文件夹（支持中文、空格及其他盘符）；也可用 `install.ps1 -InstallDirectory "E:\Apps\Server Look" -Launch`。取消目录选择不会安装。

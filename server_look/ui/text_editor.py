@@ -1,4 +1,6 @@
 """Independent plain-text windows; worker threads only communicate through queues."""
+from server_look.ui.platform_ui import command_aliases
+from server_look.ui.platform_ui import monospace
 import queue
 import threading
 from server_look.localization.localized_ui import tk, ttk, messagebox
@@ -75,7 +77,7 @@ class TextEditor:
         self.area = area
         area.pack(fill='both', expand=True)
         self.text = tk.Text(area, undo=True, autoseparators=True, maxundo=-1, wrap='none',
-                            font=('Consolas', 14))
+                            font=(monospace(), 14))
         self.text._serverlook_min_font_size = 14
         vertical = ttk.Scrollbar(area, command=self.text.yview)
         horizontal = ttk.Scrollbar(area, orient='horizontal', command=self.text.xview)
@@ -101,6 +103,8 @@ class TextEditor:
         self.window.bind('<F3>', self.find_text)
         self.window.bind('<Shift-F3>', lambda event: self.find_text(backwards=True))
         self.text.tag_configure('search_match', background='#ffe08a', foreground='#171717')
+        command_aliases(self.text)
+        command_aliases(self.window)
         self.start('load')
         self.poll_job = self.window.after(80, self.poll)
 

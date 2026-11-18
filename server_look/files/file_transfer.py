@@ -1,5 +1,6 @@
 """SFTP batch transport. Paths are data, never shell commands."""
 import os
+import sys
 from pathlib import Path
 import subprocess
 import threading
@@ -29,7 +30,12 @@ def open_local_folder(path):
     folder = Path(path).resolve(strict=True)
     if not folder.is_dir():
         raise ValueError('请选择本地文件夹')
-    os.startfile(str(folder))
+    if sys.platform == 'darwin':
+        subprocess.Popen(['open', str(folder)])
+    elif os.name == 'nt':
+        os.startfile(str(folder))
+    else:
+        subprocess.Popen(['xdg-open', str(folder)])
 
 
 class Transfer:
