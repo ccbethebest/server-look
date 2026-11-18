@@ -67,6 +67,8 @@ class MultiServerApp:
         self.notebook.select(0)
         root.protocol('WM_DELETE_WINDOW', self.close)
         self.apply_preferences(self.preferences)
+        from server_look.ui.wheel_zoom import WheelZoom
+        self.wheel_zoom = WheelZoom(self)
 
     def current_page(self):
         return self.pages.get(self.notebook.select())
@@ -308,6 +310,8 @@ class MultiServerApp:
         for page in list(self.pages.values()):
             page.close()
         self.pages.clear()
+        if getattr(self, 'wheel_zoom', None) and self.wheel_zoom.pending_save:
+            self.wheel_zoom.persist()
         self.root.destroy()
 
 

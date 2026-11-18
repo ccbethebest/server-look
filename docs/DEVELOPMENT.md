@@ -212,3 +212,10 @@ English: Text editing runs I/O in workers and UI changes on Tk's main thread. Lo
 密钥流程：`check_key` 只读查询，Tk 主线程确认后 `configure_key` 加锁追加；队列携带连接对象及 generation，连接变化/只读阻止后续写入。`tests/test_ssh_keys.py` 覆盖已配对、否/是、路径报告、连接失效、带选项条目和注释误匹配。
 
 English: Key detection never changes remote files. Installation needs UI confirmation and rechecks duplicates under a lock. Worker results retain connection identity and generation; stale results cannot install keys. Key tests cover consent, reuse, key locations and authorized_keys parsing.
+
+
+## 2.21.0 自定义目录与滚轮缩放
+
+双击 `install-custom.cmd` 可通过文件夹选择对话框指定安装目录；取消不产生安装操作。`install-d.cmd` 继续默认安装到 D:\ServerLook。支持通过 `install.ps1 -InstallDirectory "E:\Apps\Server Look" -Launch` 安装到中文、空格路径。
+
+Ctrl＋滚轮向上放大、向下缩小，复用设置中的全局大小修正（50–200%，每次 10%），字体、按钮及布局同步变化并保存。此操作不重建或断开终端会话。`ui/wheel_zoom.py` 通过控件前置 bindtag 拦截 Ctrl 滚轮，在 Map 时纳入新窗口；延迟 350ms 合并保存设置。`tests/test_wheel_zoom.py` 覆盖现有/新窗口、实际字体度量、滚动拦截、边界和持久化。

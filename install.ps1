@@ -2,9 +2,21 @@ param(
     [string]$InstallDirectory = $PSScriptRoot,
     [string]$PythonExecutable,
     [string]$ShortcutDirectory = [Environment]::GetFolderPath('Desktop'),
-    [switch]$Launch
+    [switch]$Launch,
+    [switch]$ChooseDirectory
 )
 $ErrorActionPreference = 'Stop'
+if ($ChooseDirectory) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $picker = New-Object System.Windows.Forms.FolderBrowserDialog
+    try {
+        $picker.Description = 'Choose the Server Look installation folder (for example E:\Apps\ServerLook).'
+        $picker.SelectedPath = $InstallDirectory
+        $picker.ShowNewFolderButton = $true
+        if ($picker.ShowDialog() -ne [Windows.Forms.DialogResult]::OK) { exit 0 }
+        $InstallDirectory = $picker.SelectedPath
+    } finally { $picker.Dispose() }
+}
 $target = [IO.Path]::GetFullPath($InstallDirectory).TrimEnd('\')
 $source = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')
 if ($target -eq [IO.Path]::GetPathRoot($target).TrimEnd('\')) { throw 'Choose an application folder, not a drive root.' }
@@ -13,7 +25,7 @@ New-Item -ItemType Directory -Path $target -Force | Out-Null
 Start-Transcript -Path (Join-Path $target 'install.log') -Append | Out-Null
 try {
     if ($target -ne $source) {
-        foreach ($name in @('server_look','assets','docs','tools','npu_client.pyw','requirements.txt','install.ps1','install.cmd','install-d.cmd','start.cmd','start.ps1','quick-install.ps1','README.md','build_client.ps1')) {
+        foreach ($name in @('server_look','assets','docs','tools','npu_client.pyw','requirements.txt','install.ps1','install.cmd','install-d.cmd','install-custom.cmd','start.cmd','start.ps1','quick-install.ps1','README.md','build_client.ps1')) {
             Copy-Item -LiteralPath (Join-Path $source $name) -Destination $target -Recurse -Force
         }
     }

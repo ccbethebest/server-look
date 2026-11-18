@@ -270,3 +270,10 @@ App 内两侧可相互拖拽：落在文件夹行时传到该文件夹，落在�
 Double-click a non-executable text file in either file pane to open a separate plain-text editor. Ctrl+S saves, Ctrl+Z undoes, Ctrl+Y redoes, Ctrl+A selects all, and standard copy/cut/paste shortcuts work. Closing an editor, server page, or app prompts to save, discard, or cancel. Saving on close finishes before closing the editor; retry closing the page/app afterwards. Files must be regular text files up to 4 MiB. Supported encodings and line endings are retained (mixed line endings are normalized). External changes prevent overwriting; reconnect and reopen remote files after connection changes. Read-only mode blocks remote saves. A tick means selected/enabled; an empty box means unselected. Close session also closes the current Python session.
 
 English — SSH keys: Detection reports both public/private key paths. Generation reuses existing pairs and reports that no generation is needed. Install first reads the signed-in account’s ~/.ssh/authorized_keys without modifying it. An existing key reports “Paired”; a missing key requires Yes/No confirmation. Only Yes appends the public key at EOF, with a locked duplicate check. Comments and authorized_keys options are supported. Private keys stay local.
+
+
+## 2.21.0 自定义目录与滚轮缩放
+
+双击 `install-custom.cmd` 可通过文件夹选择对话框指定安装目录；取消不产生安装操作。`install-d.cmd` 继续默认安装到 D:\ServerLook。支持通过 `install.ps1 -InstallDirectory "E:\Apps\Server Look" -Launch` 安装到中文、空格路径。
+
+Ctrl＋滚轮向上放大、向下缩小，复用设置中的全局大小修正（50–200%，每次 10%），字体、按钮及布局同步变化并保存。此操作不重建或断开终端会话。`ui/wheel_zoom.py` 通过控件前置 bindtag 拦截 Ctrl 滚轮，在 Map 时纳入新窗口；延迟 350ms 合并保存设置。`tests/test_wheel_zoom.py` 覆盖现有/新窗口、实际字体度量、滚动拦截、边界和持久化。
