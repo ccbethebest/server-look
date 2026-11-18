@@ -1,8 +1,3 @@
 @echo off
-cd /d "%~dp0"
-if not exist ".venv\Scripts\pythonw.exe" (
-    echo Please run install.cmd first.
-    pause
-    exit /b 1
-)
-start "" ".venv\Scripts\pythonw.exe" "npu_client.pyw"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0start.ps1"
+if errorlevel 1 pause

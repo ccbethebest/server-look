@@ -1,3 +1,8 @@
+## 2.20.0 安装和启动
+
+下载并解压最新源码包，双击 install-d.cmd 安装到 D:\ServerLook，并创建带服务器图标的 Server Look 桌面快捷方式。没有 D 盘时双击 install.cmd 安装在当前目录。不要直接在 ZIP 内运行，不要复制其他电脑的 .venv。缺少 Python 时通过 WinGet 安装当前用户 Python 3.12；没有 WinGet 时需手动安装带 Tcl/Tk 的 Python 3.12 或更新版本。首次安装需要网络。
+
+重新执行安装脚本可修复依赖、失效环境和桌面快捷方式。启动初始化失败会弹出原因并写入 %APPDATA%\ServerLook\startup.log；运行 start.cmd 可查看启动检查，结果位于安装目录 start-check.log，安装记录位于 install.log。独立 quick-install.ps1 可下载最新源码并校验 SHA256 后安装；私有仓库需当前进程 GH_TOKEN 具有读取权限，也可登录浏览器下载源码后使用 install-d.cmd。
 ## 2.19.5 文本编辑字号
 
 文本编辑器正文和行号默认放大到 14 磅；切换主题或刷新设置后仍保留放大的字号。设置中的字体大小超过 14 磅时，编辑器同步使用更大的字号，全局大小修正继续生效。适用于本地、服务器及容器内 vi/vim 可视化文本编辑窗口。

@@ -1,3 +1,13 @@
+## 2.20.0 D 盘安装与启动诊断
+
+在其他电脑上，登录 GitHub 下载最新 Release 的 `server-look-2.20.0-source.zip`，解压后双击 **install-d.cmd**：安装到 `D:\ServerLook`，检查 Python、安装独立依赖，创建带服务器图标的 **Server Look** 桌面快捷方式并启动。没有 D 盘时用 `install.cmd` 安装在当前解压目录，或用 `install.ps1 -InstallDirectory E:\ServerLook -Launch` 指定位置。请勿直接在 ZIP 内运行。
+
+缺少 Python 时安装器通过 Windows WinGet 安装当前用户的 Python 3.12（需要网络）；没有 WinGet 时会明确提示手动安装带 Tcl/Tk 的 Python 3.12 或更新版本。应用和依赖放在选定目录，Python 本体遵循其当前用户安装位置。重新运行安装器可修复依赖和快捷方式；不要跨电脑复制 `.venv`。
+
+也可单独下载 Release 的 `quick-install.ps1`，右键使用 PowerShell 运行，或执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\quick-install.ps1`：获取最新源码，核验 GitHub 提供的 SHA256，再默认安装到 D 盘。私有仓库需要在当前进程设置有读取权限的 `GH_TOKEN`；不方便设置时使用上面的浏览器下载方式，不需要在软件中填写 GitHub 凭据。
+
+双击无反应时：新版初始化错误会弹出原因，日志位于 `%APPDATA%\ServerLook\startup.log`；源码版也可运行 `start.cmd` 查看启动检查，日志在安装目录 `start-check.log`。安装日志为安装目录 `install.log`。若操作系统在程序启动前拦截文件，请保留系统提示以便排查。
+
 ## 2.19.5 文本编辑字号
 
 文本编辑器正文和行号默认放大到 14 磅；切换主题或刷新设置后仍保留放大的字号。设置中的字体大小超过 14 磅时，编辑器同步使用更大的字号，全局大小修正继续生效。适用于本地、服务器及容器内 vi/vim 可视化文本编辑窗口。
@@ -144,13 +154,13 @@ Windows 多服务器可视化管理工具：在同一个客户端查看 Linux �
 
 ## 下载与快速启动
 
-- 便携版：本地构建的 `服务器看看-2.14.2.exe` 可双击运行，无需安装 Python；当前 Release 提供源码包，EXE 在线附件暂不可用。
-- 源码用户：下载并解压源码 ZIP，安装带 Tcl/Tk 的 Python 3.12 并勾选加入 PATH，双击 `install.cmd` 安装依赖，再双击 `start.cmd` 启动。首次安装需要网络，依赖放在项目内的 `.venv`。
+- 便携版：本地构建的 `服务器看看-2.20.0.exe` 可双击运行，无需安装 Python；当前 Release 提供源码包，EXE 在线附件暂不可用。
+- 源码用户：下载并解压源码 ZIP，双击 `install-d.cmd` 安装到 D 盘并创建桌面快捷方式；或者双击 `install.cmd` 安装在当前目录，再双击 `start.cmd` 启动。首次安装需要网络，依赖放在安装目录的 `.venv`。
 - PowerShell 安装并启动：`powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Launch`。执行策略仅对本次进程生效。
-- EXE 和已安装依赖的源码版均可离线启动；连接服务器需要网络可达。源码安装完成后移动项目目录，建议删除 `.venv` 并重新安装。
+- EXE 和已安装依赖的源码版均可离线启动；连接服务器需要网络可达。源码安装完成后移动目录或换电脑，请重新运行安装器，不要复制原电脑的 `.venv`。
 - 构建 EXE：安装依赖后，执行 `.\.venv\Scripts\python.exe -m pip install pyinstaller==6.22.0`，然后在当前 PowerShell 中执行 `$env:Path = "$PWD\.venv\Scripts;$env:Path"` 和 `.\build_client.ps1`，产物在 `dist`。
 
-发布仅包含源码、文档、资源和脚本，不包含连接历史、密码、本机虚拟环境或构建缓存。源码安装脚本不会自动安装 Python，也不修改全局 Python 依赖。
+发布仅包含源码、文档、资源和脚本，不包含连接历史、密码、本机虚拟环境或构建缓存。缺少 Python 时安装器尝试通过 WinGet 安装 Python，应用依赖仍只安装到独立 `.venv`。
 
 
 ## 2.10.0 排序、映射与直接拖拽
