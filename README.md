@@ -1,6 +1,6 @@
-## 2.20.0 D 盘安装与启动诊断
+## 2.20.1 D 盘安装与启动诊断
 
-在其他电脑上，登录 GitHub 下载最新 Release 的 `server-look-2.20.0-source.zip`，解压后双击 **install-d.cmd**：安装到 `D:\ServerLook`，检查 Python、安装独立依赖，创建带服务器图标的 **Server Look** 桌面快捷方式并启动。没有 D 盘时用 `install.cmd` 安装在当前解压目录，或用 `install.ps1 -InstallDirectory E:\ServerLook -Launch` 指定位置。请勿直接在 ZIP 内运行。
+在其他电脑上，登录 GitHub 下载最新 Release 的 `server-look-2.20.1-source.zip`，解压后双击 **install-d.cmd**：安装到 `D:\ServerLook`，检查 Python、安装独立依赖，创建带服务器图标的 **Server Look** 桌面快捷方式并启动。没有 D 盘时用 `install.cmd` 安装在当前解压目录，或用 `install.ps1 -InstallDirectory E:\ServerLook -Launch` 指定位置。请勿直接在 ZIP 内运行。
 
 缺少 Python 时安装器通过 Windows WinGet 安装当前用户的 Python 3.12（需要网络）；没有 WinGet 时会明确提示手动安装带 Tcl/Tk 的 Python 3.12 或更新版本。应用和依赖放在选定目录，Python 本体遵循其当前用户安装位置。重新运行安装器可修复依赖和快捷方式；不要跨电脑复制 `.venv`。
 
@@ -154,7 +154,7 @@ Windows 多服务器可视化管理工具：在同一个客户端查看 Linux �
 
 ## 下载与快速启动
 
-- 便携版：本地构建的 `服务器看看-2.20.0.exe` 可双击运行，无需安装 Python；当前 Release 提供源码包，EXE 在线附件暂不可用。
+- 便携版：本地构建的 `服务器看看-2.20.1.exe` 可双击运行，无需安装 Python；当前 Release 提供源码包，EXE 在线附件暂不可用。
 - 源码用户：下载并解压源码 ZIP，双击 `install-d.cmd` 安装到 D 盘并创建桌面快捷方式；或者双击 `install.cmd` 安装在当前目录，再双击 `start.cmd` 启动。首次安装需要网络，依赖放在安装目录的 `.venv`。
 - PowerShell 安装并启动：`powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Launch`。执行策略仅对本次进程生效。
 - EXE 和已安装依赖的源码版均可离线启动；连接服务器需要网络可达。源码安装完成后移动目录或换电脑，请重新运行安装器，不要复制原电脑的 `.venv`。

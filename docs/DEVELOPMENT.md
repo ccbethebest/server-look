@@ -1,6 +1,8 @@
-## 2.20.0 Windows 安装与启动边界
+## 2.20.1 Windows 安装与启动边界
 
 install.ps1 检测 py 启动器、PATH Python 和用户 Python312，要求 Python 3.12+、Tcl/Tk 和 venv；缺少时使用 WinGet 当前用户安装。应用复制采用发布文件白名单，虚拟环境在目标机创建；拒绝驱动器根目录、源码子目录和符号链接 .venv。原有失效环境通过 venv --clear 重建，健康环境复用并补齐依赖。验证导入和 TkinterDnD 实际建窗后使用 WScript.Shell 创建具有绝对目标、工作目录和 ICO 的桌面快捷方式。
+
+快速安装使用 .NET SHA256 和 ZipFile，避免依赖 PowerShell 可选模块。
 
 quick-install.ps1 从 GitHub 最新 Release 获取唯一源码 ZIP，核验 API 的 SHA256 digest 后解压运行安装脚本。私有仓库仅使用进程 GH_TOKEN，不存储凭据。start.ps1 预检依赖；app/launcher.py 将 desktop_app 的导入和初始化置于异常边界，使用独立于 Tk 的 Windows MessageBoxW 报错，APPDATA 不可写时回退临时目录日志。运行期 Tk 回调仍沿用原异常处理。
 

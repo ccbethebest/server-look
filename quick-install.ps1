@@ -15,9 +15,15 @@ $downloadHeaders = $headers.Clone()
 $downloadHeaders.Accept = 'application/octet-stream'
 Invoke-WebRequest $asset[0].url -Headers $downloadHeaders -OutFile $archive -UseBasicParsing
 if ($asset[0].digest -notmatch '^sha256:([0-9a-fA-F]{64})$') { throw 'The release has no SHA256 digest. Please download and inspect the source manually.' }
-if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $Matches[1]) { throw 'Source package checksum mismatch.' }
+$expectedHash = $Matches[1]
+$sha256 = [Security.Cryptography.SHA256]::Create()
+$stream = [IO.File]::OpenRead($archive)
+try { $actualHash = [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '') }
+finally { $stream.Dispose(); $sha256.Dispose() }
+if ($actualHash -ne $expectedHash) { throw 'Source package checksum mismatch.' }
 $expanded = Join-Path $folder 'source'
-Expand-Archive -LiteralPath $archive -DestinationPath $expanded
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[IO.Compression.ZipFile]::ExtractToDirectory($archive, $expanded)
 $installer = Join-Path $expanded ('server-look-' + $release.tag_name.TrimStart('v') + '\install.ps1')
 if (-not (Test-Path -LiteralPath $installer)) { throw 'Installation script is missing from the source package.' }
 & $installer -InstallDirectory $InstallDirectory -Launch:(-not $NoLaunch)

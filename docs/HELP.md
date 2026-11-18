@@ -1,4 +1,4 @@
-## 2.20.0 安装和启动
+## 2.20.1 安装和启动
 
 下载并解压最新源码包，双击 install-d.cmd 安装到 D:\ServerLook，并创建带服务器图标的 Server Look 桌面快捷方式。没有 D 盘时双击 install.cmd 安装在当前目录。不要直接在 ZIP 内运行，不要复制其他电脑的 .venv。缺少 Python 时通过 WinGet 安装当前用户 Python 3.12；没有 WinGet 时需手动安装带 Tcl/Tk 的 Python 3.12 或更新版本。首次安装需要网络。
 
